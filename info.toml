@@ -1,0 +1,526 @@
+# Exercise catalogue for Clings.
+#
+# Each [[exercises]] entry describes one file under exercises/<dir>/<name>.c
+# with a reference solution at solutions/<dir>/<name>.c.
+#
+# Per-exercise fields:
+#   name             (required) file stem of the .c file
+#   dir              topic directory below exercises/ and solutions/
+#   description      one-line summary shown by `clings list`
+#   hint             (required) shown by `clings hint`
+#   std              c89 | c99 | c11 | c17 (default) | c23
+#   expected_stdout  exact stdout the program must print
+#   required_flags   extra compiler flags for this exercise
+#   expected_exit    exit code the program must return (default 0)
+#   skip_check_unsolved  `clings dev check` will not verify that the unsolved
+#                    exercise fails
+
+format_version = 1
+
+# Flags passed to the compiler for every exercise. Warnings fail an exercise.
+default_flags = ["-Wall", "-Wextra"]
+
+welcome_message = """
+       Welcome to...
+        ____ _ _
+       / ___| (_)_ __   __ _ ___
+      | |   | | | '_ \\ / _` / __|
+      | |___| | | | | | (_| \\__ \\
+       \\____|_|_|_| |_|\\__, |___/
+                       |___/
+
+Clings is a set of small exercises to get you used to reading and writing C.
+Each exercise is a C file with something wrong or missing in it. Make it
+compile without warnings and print the expected output, and you are done.
+
+Open the exercise file shown below in your editor, fix it, and save. Clings
+checks it again automatically. Stuck? Press `h` for a hint. Reference
+solutions are in the solutions/ directory, but try the hint first!
+"""
+
+final_message = """
+That was every exercise Clings has for you. Well done!
+
+Where to go from here:
+  - Read "The C Programming Language" by Kernighan and Ritchie.
+  - Write a small program of your own: a to-do list, a calculator, a tiny
+    text adventure. Compile it with -Wall -Wextra and keep it warning-free.
+  - Try compiling your programs with both gcc and clang, and with
+    -fsanitize=address,undefined to catch memory bugs.
+"""
+
+# ---------------------------------------------------------------------------
+# 00_intro
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "intro1"
+dir = "00_intro"
+description = "Your first compile error."
+hint = """
+Every C statement ends with a semicolon. Look at the line with printf: the
+compiler even tells you the line number where it expected a `;`."""
+expected_stdout = """
+Hello, Clings!
+"""
+
+[[exercises]]
+name = "intro2"
+dir = "00_intro"
+description = "Newlines are your job, not printf's."
+hint = """
+Inside a string, `\\n` is the newline character. Add one at the end of each
+string you print."""
+expected_stdout = """
+I am
+learning C
+"""
+
+# ---------------------------------------------------------------------------
+# 01_variables
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "variables1"
+dir = "01_variables"
+description = "Declare before use."
+hint = """
+A declaration names the type and the variable, for example `int x;`. You can
+declare and assign in one go: `int x = 42;`."""
+expected_stdout = """
+x is 42
+"""
+
+[[exercises]]
+name = "variables2"
+dir = "01_variables"
+description = "const means constant."
+hint = """
+`count` needs to change inside the loop, so it must not be `const`. Remove
+the `const` from its declaration."""
+expected_stdout = """
+count is 5
+"""
+
+[[exercises]]
+name = "variables3"
+dir = "01_variables"
+description = "Pick a type that fits the value."
+hint = """
+Numbers with a fractional part need a floating-point type: `float` or
+`double`. `double` is the usual choice, and it matches `%f` in printf."""
+expected_stdout = """
+Price: 9.99
+"""
+
+# ---------------------------------------------------------------------------
+# 02_types
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "types1"
+dir = "02_types"
+description = "Integer division truncates."
+hint = """
+If at least one operand of `/` is a floating-point value, the division is
+done in floating point. A cast converts a value: `(double)a` is `a` as a
+double. Cast *before* dividing, not after: `(double)(a / b)` is still 3.0."""
+expected_stdout = """
+7 / 2 = 3.5
+"""
+
+[[exercises]]
+name = "types2"
+dir = "02_types"
+description = "Characters are small integers."
+hint = """
+Since 'A' + 1 is 'B', the letter two places after `c` is simply `c + 2`."""
+expected_stdout = """
+C has code 67
+"""
+
+[[exercises]]
+name = "types3"
+dir = "02_types"
+description = "Every integer type has a range."
+hint = """
+`unsigned char` holds 0..255. A plain `int` holds at least -32767..32767 (on
+most machines much more), so `int value = 250;` works fine with `%d`."""
+expected_stdout = """
+value is 260
+"""
+
+[[exercises]]
+name = "types4"
+dir = "02_types"
+description = "Where bool comes from."
+hint = """
+Add `#include <stdbool.h>` at the top of the file. It defines `bool`, `true`
+and `false` for C99 through C17."""
+std = "c17"
+expected_stdout = """
+Ready!
+"""
+
+# ---------------------------------------------------------------------------
+# 03_control_flow
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "if1"
+dir = "03_control_flow"
+description = "= assigns, == compares."
+hint = """
+Change `if (x = 5)` to `if (x == 5)`. Tip: some people write `if (5 == x)`
+so that a forgotten `=` becomes a compile error instead of a silent bug."""
+expected_stdout = """
+x is not five
+"""
+
+[[exercises]]
+name = "loops1"
+dir = "03_control_flow"
+description = "An off-by-one in a for loop."
+hint = """
+`i < 10` stops before 10. To include 10, use `i <= 10` (or `i < 11`)."""
+expected_stdout = """
+The sum of 1 to 10 is 55
+"""
+
+[[exercises]]
+name = "loops2"
+dir = "03_control_flow"
+description = "break versus continue."
+hint = """
+`break` exits the loop as soon as it sees the first odd number (1). You want
+to *skip* odd numbers and keep looping: that is what `continue` does."""
+expected_stdout = """
+2
+4
+6
+8
+10
+"""
+
+[[exercises]]
+name = "switch1"
+dir = "03_control_flow"
+description = "switch fallthrough."
+hint = """
+Add `break;` after the printf in every case (including default, for good
+measure). Without it, execution continues into the next case."""
+expected_stdout = """
+Wednesday
+"""
+
+# ---------------------------------------------------------------------------
+# 04_functions
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "functions1"
+dir = "04_functions"
+description = "Declare functions before calling them."
+hint = """
+Either move the whole `greet` function above `main`, or add a *prototype*
+before main: `void greet(void);`. Prototypes are what header files are full
+of."""
+expected_stdout = """
+Hello from a function!
+"""
+
+[[exercises]]
+name = "functions2"
+dir = "04_functions"
+description = "Return the value."
+hint = """
+The line `n * n;` computes a value and throws it away. Write
+`return n * n;` instead."""
+expected_stdout = """
+5 squared is 25
+"""
+
+[[exercises]]
+name = "functions3"
+dir = "04_functions"
+description = "Arguments are passed by value."
+hint = """
+Change the return type to `int` and return `n + 1`. In main, assign the
+result back: `x = increment(x);`."""
+expected_stdout = """
+x is 2
+"""
+
+[[exercises]]
+name = "functions4"
+dir = "04_functions"
+description = "Recursion needs a base case."
+hint = """
+0! and 1! are both 1. Add `if (n <= 1) return 1;` at the top of the
+function, before the recursive call."""
+expected_stdout = """
+5! = 120
+"""
+
+# ---------------------------------------------------------------------------
+# 05_arrays
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "arrays1"
+dir = "05_arrays"
+description = "Indices run from 0 to length - 1."
+hint = """
+The valid indices of `numbers[5]` are 0, 1, 2, 3, 4. The loop condition
+should be `i < 5`, not `i <= 5`."""
+expected_stdout = """
+10 20 30 40 50
+"""
+
+[[exercises]]
+name = "arrays2"
+dir = "05_arrays"
+description = "Counting elements with sizeof."
+hint = """
+`sizeof(numbers)` is the size of the whole array in bytes and
+`sizeof(numbers[0])` is the size of one element, so
+`sizeof(numbers) / sizeof(numbers[0])` is the number of elements. Note that
+this only works on a real array, not on a pointer to its first element."""
+expected_stdout = """
+The array has 6 elements and their sum is 21
+"""
+
+[[exercises]]
+name = "arrays3"
+dir = "05_arrays"
+description = "Two-dimensional arrays."
+hint = """
+The outer loop walks the rows, so it runs `ROWS` times; the inner loop walks
+the columns of one row, so it runs `COLS` times."""
+expected_stdout = """
+1 2 3
+4 5 6
+"""
+
+# ---------------------------------------------------------------------------
+# 06_pointers
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "pointers1"
+dir = "06_pointers"
+description = "Addresses and dereferencing."
+hint = """
+`&x` is the address of `x`. Initialize the pointer with `int *p = &x;`."""
+expected_stdout = """
+x is 20
+"""
+
+[[exercises]]
+name = "pointers2"
+dir = "06_pointers"
+description = "Swap two values through pointers."
+hint = """
+Declare the function as `void swap(int *a, int *b)`, use `*a` and `*b`
+inside it to read and write the pointed-to values, and call it with
+`swap(&a, &b);`."""
+expected_stdout = """
+a = 2, b = 1
+"""
+
+[[exercises]]
+name = "pointers3"
+dir = "06_pointers"
+description = "Pointer arithmetic."
+hint = """
+The array has 4 elements, so the last one is 3 elements after the first:
+`p = p + 3;`. Pointer arithmetic counts in elements, so this works for any
+element type."""
+expected_stdout = """
+first: 5
+last: 20
+"""
+
+[[exercises]]
+name = "pointers4"
+dir = "06_pointers"
+description = "Check for NULL."
+hint = """
+At the start of `print_length`, add
+`if (s == NULL) { printf("(null)\\n"); return; }`."""
+expected_stdout = """
+hello has length 5
+(null)
+"""
+
+# ---------------------------------------------------------------------------
+# 07_strings
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "strings1"
+dir = "07_strings"
+description = "strlen versus sizeof."
+hint = """
+Include <string.h> and use `strlen(greeting)` instead of
+`sizeof(greeting)`. `strlen` returns a `size_t`, which is what `%zu` prints."""
+expected_stdout = """
+hello has 5 characters
+"""
+
+[[exercises]]
+name = "strings2"
+dir = "07_strings"
+description = "Comparing strings."
+hint = """
+`strcmp(a, b)` returns 0 when the two strings have the same contents, so the
+condition becomes `if (strcmp(answer, "yes") == 0)`."""
+expected_stdout = """
+Confirmed
+"""
+
+[[exercises]]
+name = "strings3"
+dir = "07_strings"
+description = "Reverse a string in place."
+hint = """
+Use two indices, one starting at 0 and one at `strlen(s) - 1`. Swap
+`s[i]` and `s[j]` (you need a temporary char), then move i forward and j
+backward while `i < j`."""
+expected_stdout = """
+reversed: sgnilc
+"""
+
+[[exercises]]
+name = "strings4"
+dir = "07_strings"
+description = "Comparing against several characters."
+hint = """
+Each alternative needs its own comparison:
+`c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u'`."""
+expected_stdout = """
+programming has 3 vowels
+"""
+
+# ---------------------------------------------------------------------------
+# 08_structs
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "structs1"
+dir = "08_structs"
+description = "Define a struct."
+hint = """
+`name` is assigned a string literal, so `const char *name;` fits. `age` is
+printed with `%d`, so `int age;`."""
+expected_stdout = """
+Ada is 36 years old
+"""
+
+[[exercises]]
+name = "structs2"
+dir = "08_structs"
+description = "Pointers to structs use ->."
+hint = """
+Replace `p.x` with `p->x` and `p.y` with `p->y`."""
+expected_stdout = """
+Point moved to (3, 4)
+"""
+
+[[exercises]]
+name = "structs3"
+dir = "08_structs"
+description = "Arrays of structs."
+hint = """
+`items[i]` is one struct, so its members are `items[i].name` and
+`items[i].stock`."""
+expected_stdout = """
+apple: 10
+pear: 12
+plum: 20
+Total: 42
+"""
+
+# ---------------------------------------------------------------------------
+# 09_enums
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "enums1"
+dir = "09_enums"
+description = "Enums and switch."
+hint = """
+Add `case GREEN: return "green";` between the RED and BLUE cases."""
+expected_stdout = """
+GREEN has value 1
+GREEN is called green
+"""
+
+[[exercises]]
+name = "enums2"
+dir = "09_enums"
+description = "Counting enum values."
+hint = """
+Because `DIRECTION_COUNT` comes right after `WEST`, its value is 4, the
+number of real directions. Use it as the loop bound: `d < DIRECTION_COUNT`."""
+expected_stdout = """
+0: north
+1: east
+2: south
+3: west
+"""
+
+# ---------------------------------------------------------------------------
+# 10_memory
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "memory1"
+dir = "10_memory"
+description = "malloc and free."
+hint = """
+`count` ints take `count * sizeof(int)` bytes. At the end, call
+`free(squares);`."""
+expected_stdout = """
+Squares: 0 1 4 9 16
+"""
+
+[[exercises]]
+name = "memory2"
+dir = "10_memory"
+description = "Growing an array with realloc."
+hint = """
+Start with a capacity of 2 when the current capacity is 0, otherwise double
+it: `v->capacity == 0 ? 2 : v->capacity * 2`. Pass
+`new_capacity * sizeof(int)` bytes to realloc."""
+expected_stdout = """
+Stored 10 numbers, capacity grew to 16
+Last number: 90
+"""
+
+[[exercises]]
+name = "memory3"
+dir = "10_memory"
+description = "Never return a pointer to a local."
+hint = """
+Replace `char buffer[64];` with `char *buffer = malloc(64);` (check for
+NULL), write into it with snprintf, and return it. In main, `free(greeting)`
+after printing."""
+expected_stdout = """
+Greeting: hello, Ada
+"""
+
+# ---------------------------------------------------------------------------
+# 11_macros
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "macros1"
+dir = "11_macros"
+description = "Parenthesize macro arguments."
+hint = """
+Wrap the parameter and the whole expansion in parentheses:
+`#define SQUARE(x) ((x) * (x))`."""
+expected_stdout = """
+SQUARE(2 + 3) = 25
+"""

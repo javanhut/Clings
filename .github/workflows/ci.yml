@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  rust:
+    name: Build, test, lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+
+  exercises:
+    name: Exercises (${{ matrix.cc }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        cc: [gcc, clang]
+        exclude:
+          # macOS `gcc` is a clang shim; testing clang there is enough.
+          - os: macos-latest
+            cc: gcc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build
+      - name: Verify every solution passes and every unsolved exercise fails
+        run: cargo run -- dev check
+        env:
+          CC: ${{ matrix.cc }}
+      - name: Smoke-test init + check-all on the solutions
+        run: |
+          cd "$RUNNER_TEMP"
+          "$GITHUB_WORKSPACE/target/debug/clings" init
+          cd clings
+          cp -r solutions/* exercises/
+          "$GITHUB_WORKSPACE/target/debug/clings" check-all
+        env:
+          CC: ${{ matrix.cc }}

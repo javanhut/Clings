@@ -1,0 +1,17 @@
+[package]
+name = "clings"
+version = "0.1.0"
+edition = "2021"
+description = "Small exercises to get you used to reading and writing C code. Rustlings, but for C."
+license = "MIT"
+build = "build.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+notify = "8"
+serde = { version = "1", features = ["derive"] }
+toml = "0.9"
+
+[profile.release]
+strip = true

@@ -149,9 +149,14 @@ impl AppState {
     /// The next not-done exercise after the current one, wrapping around.
     /// Returns `None` when everything is done.
     pub fn next_pending(&self) -> Option<usize> {
+        self.next_pending_after(self.current_idx)
+    }
+
+    /// The next not-done exercise after `idx`, wrapping around.
+    pub fn next_pending_after(&self, idx: usize) -> Option<usize> {
         let n = self.exercises.len();
         (1..=n)
-            .map(|offset| (self.current_idx + offset) % n)
+            .map(|offset| (idx + offset) % n)
             .find(|&i| !self.exercises[i].done)
     }
 
@@ -162,6 +167,25 @@ impl AppState {
     /// Restores the exercise file to its pristine, embedded version and marks
     /// it as not done.
     pub fn reset(&mut self, idx: usize) -> Result<()> {
+        self.restore_file(idx)?;
+        self.set_done(idx, false)
+    }
+
+    /// Restores every exercise file, forgets all progress and makes the first
+    /// exercise current again.
+    pub fn reset_all(&mut self) -> Result<()> {
+        for idx in 0..self.exercises.len() {
+            self.restore_file(idx)?;
+            self.exercises[idx].done = false;
+        }
+        self.n_done = 0;
+        self.current_idx = 0;
+        self.write_state()
+    }
+
+    /// Overwrites the exercise file with its pristine, embedded version
+    /// without touching the recorded progress.
+    fn restore_file(&self, idx: usize) -> Result<()> {
         let ex = &self.exercises[idx];
         let rel = ex.path.to_string_lossy().replace('\\', "/");
         let Some(content) = embedded::get(&rel) else {
@@ -175,8 +199,7 @@ impl AppState {
             fs::create_dir_all(parent)?;
         }
         fs::write(&ex.path, content)
-            .with_context(|| format!("Failed to write {}", ex.path.display()))?;
-        self.set_done(idx, false)
+            .with_context(|| format!("Failed to write {}", ex.path.display()))
     }
 
     pub fn write_state(&self) -> Result<()> {

@@ -38,7 +38,14 @@ pub enum Subcommands {
     /// Restore an exercise to its original state. Resets the current exercise by default.
     Reset {
         /// Name of the exercise.
+        #[arg(conflicts_with = "all")]
         name: Option<String>,
+        /// Reset every exercise and erase all progress.
+        #[arg(long)]
+        all: bool,
+        /// Do not ask for confirmation before resetting everything.
+        #[arg(short, long, requires = "all")]
+        yes: bool,
     },
     /// Show a hint for an exercise. Shows the hint for the current exercise by default.
     Hint {

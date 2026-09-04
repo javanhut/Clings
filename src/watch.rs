@@ -75,28 +75,9 @@ pub fn watch(app: &mut AppState, opts: WatchOptions) -> Result<()> {
         Some(watcher)
     };
 
-    println!(
-        "{} Using compiler `{}` ({}).",
-        term::dim("Clings watch mode."),
-        app.toolchain.cc.to_string_lossy(),
-        term::dim(&app.toolchain.version)
-    );
-    if opts.manual_run {
-        println!(
-            "{}",
-            term::dim("Manual mode: press `r` to check the current exercise.")
-        );
-    } else {
-        println!(
-            "{}",
-            term::dim("Edit and save the exercise file; Clings re-checks it automatically.")
-        );
-    }
-    println!();
-
     open_in_editor(&opts, app.current().path.as_path());
     let mut last_run = Instant::now() - Duration::from_secs(1);
-    run_current(app, &mut last_run)?;
+    run_current(app, &opts, &mut last_run)?;
 
     while let Ok(event) = rx.recv() {
         match event {
@@ -112,7 +93,7 @@ pub fn watch(app: &mut AppState, opts: WatchOptions) -> Result<()> {
                 if idx != app.current_idx() {
                     app.set_current_idx(idx)?;
                 }
-                run_current(app, &mut last_run)?;
+                run_current(app, &opts, &mut last_run)?;
                 drain_file_events(&rx);
             }
             Event::Input(line) => match line.trim() {
@@ -132,7 +113,7 @@ pub fn watch(app: &mut AppState, opts: WatchOptions) -> Result<()> {
                     }
                     app.set_current_idx(next)?;
                     open_in_editor(&opts, app.current().path.as_path());
-                    run_current(app, &mut last_run)?;
+                    run_current(app, &opts, &mut last_run)?;
                     drain_file_events(&rx);
                 }
                 "h" | "hint" => {
@@ -153,7 +134,7 @@ pub fn watch(app: &mut AppState, opts: WatchOptions) -> Result<()> {
                     prompt(app);
                 }
                 "r" | "run" => {
-                    run_current(app, &mut last_run)?;
+                    run_current(app, &opts, &mut last_run)?;
                     drain_file_events(&rx);
                 }
                 "q" | "quit" | "exit" => break,
@@ -198,8 +179,27 @@ fn drain_file_events(rx: &mpsc::Receiver<Event>) {
     }
 }
 
-fn run_current(app: &mut AppState, last_run: &mut Instant) -> Result<()> {
+/// Prints the one-line watch-mode header shown at the top of every run.
+fn print_header(app: &AppState, opts: &WatchOptions) {
+    let how = if opts.manual_run {
+        "Press `r` to check the current exercise."
+    } else {
+        "Save the exercise file to re-check it."
+    };
+    println!(
+        "{}",
+        term::dim(&format!(
+            "Clings watch mode · {} · {how}",
+            app.toolchain.version
+        ))
+    );
+    println!();
+}
+
+fn run_current(app: &mut AppState, opts: &WatchOptions, last_run: &mut Instant) -> Result<()> {
     let idx = app.current_idx();
+    term::clear_screen();
+    print_header(app, opts);
     println!("{}", app.exercises[idx].banner());
     println!();
     let report = app.run_exercise(idx)?;
@@ -230,6 +230,7 @@ fn run_current(app: &mut AppState, last_run: &mut Instant) -> Result<()> {
 }
 
 fn check_all(app: &mut AppState) -> Result<()> {
+    term::clear_screen();
     let mut first_failed = None;
     for idx in 0..app.exercises.len() {
         let report = app.run_exercise(idx)?;

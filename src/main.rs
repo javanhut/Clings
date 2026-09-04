@@ -9,7 +9,11 @@ mod runner;
 mod term;
 mod watch;
 
-use std::{path::Path, process::ExitCode};
+use std::{
+    io::{self, Write},
+    path::Path,
+    process::ExitCode,
+};
 
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -70,7 +74,8 @@ fn run() -> Result<ExitCode> {
         }
         Some(Subcommands::Run { name }) => cmd_run(&mut app, name.as_deref()),
         Some(Subcommands::CheckAll) => cmd_check_all(&mut app),
-        Some(Subcommands::Reset { name }) => {
+        Some(Subcommands::Reset { all: true, yes, .. }) => cmd_reset_all(&mut app, yes),
+        Some(Subcommands::Reset { name, .. }) => {
             let idx = app.resolve(name.as_deref())?;
             app.reset(idx)?;
             println!(
@@ -100,7 +105,6 @@ fn run() -> Result<ExitCode> {
 
 fn cmd_run(app: &mut AppState, name: Option<&str>) -> Result<ExitCode> {
     let idx = app.resolve(name)?;
-    app.set_current_idx(idx)?;
     println!("{}\n", app.exercises[idx].banner());
     let report = app.run_exercise(idx)?;
     print!("{}", report.text);
@@ -109,6 +113,8 @@ fn cmd_run(app: &mut AppState, name: Option<&str>) -> Result<ExitCode> {
     println!("{}", app.progress_bar());
 
     if !report.passed {
+        // A failed run leaves the current exercise where it was, so trying an
+        // old exercise never drags watch mode backwards.
         println!(
             "{}",
             term::dim(&format!(
@@ -126,13 +132,50 @@ fn cmd_run(app: &mut AppState, name: Option<&str>) -> Result<ExitCode> {
         if let Some(msg) = &app.final_message {
             println!("\n{}", msg.trim_end());
         }
-    } else if let Some(next) = app.next_pending() {
+    } else if idx == app.current_idx() {
+        // Passing the current exercise moves on to the next pending one, as
+        // `n` does in watch mode. Passing any other exercise (for example
+        // re-running an old one) leaves the pointer alone.
+        if let Some(next) = app.next_pending_after(idx) {
+            app.set_current_idx(next)?;
+            println!(
+                "Next exercise: {} ({})",
+                term::bold(&app.exercises[next].display_name()),
+                app.exercises[next].path.display()
+            );
+        }
+    } else {
         println!(
-            "Next exercise: {} ({})",
-            term::bold(&app.exercises[next].display_name()),
-            app.exercises[next].path.display()
+            "Current exercise is still {} ({}).",
+            term::bold(&app.current().display_name()),
+            app.current().path.display()
         );
     }
+    Ok(ExitCode::SUCCESS)
+}
+
+fn cmd_reset_all(app: &mut AppState, yes: bool) -> Result<ExitCode> {
+    if !yes {
+        print!(
+            "{} This overwrites every exercise file and erases your progress ({}/{} done). Continue? [y/N] ",
+            term::yellow("Warning:"),
+            app.n_done(),
+            app.exercises.len()
+        );
+        io::stdout().flush()?;
+        let mut answer = String::new();
+        io::stdin().read_line(&mut answer)?;
+        if !matches!(answer.trim(), "y" | "Y" | "yes") {
+            println!("Nothing was changed.");
+            return Ok(ExitCode::FAILURE);
+        }
+    }
+    app.reset_all()?;
+    println!(
+        "All {} exercises have been reset to their original state. Current exercise is {}.",
+        app.exercises.len(),
+        term::bold(&app.current().display_name())
+    );
     Ok(ExitCode::SUCCESS)
 }
 

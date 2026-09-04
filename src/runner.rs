@@ -182,6 +182,10 @@ impl Toolchain {
         let exit_ok = code == spec.expected_exit;
 
         if output_ok && exit_ok {
+            push_output(&mut text, "Output:", &prog.stdout);
+            if !prog.stderr.trim().is_empty() {
+                push_output(&mut text, "Program stderr:", &prog.stderr);
+            }
             text.push_str(&term::green(
                 "✓ Compiled without warnings and printed the expected output!",
             ));
@@ -201,6 +205,8 @@ impl Toolchain {
         if !output_ok {
             text.push_str(&format!("{}\n", term::red("✗ The output does not match.")));
             text.push_str(&render_diff(&expected, &actual));
+        } else {
+            push_output(&mut text, "Output:", &prog.stdout);
         }
         if !prog.stderr.trim().is_empty() {
             text.push_str(&format!("{}\n", term::dim("Program stderr:")));
@@ -212,6 +218,18 @@ impl Toolchain {
             text,
         })
     }
+}
+
+/// Appends a labelled, indented block of program output. An empty output is
+/// shown as `(nothing)` so the user can see the program really printed nothing.
+fn push_output(text: &mut String, label: &str, output: &str) {
+    text.push_str(&format!("{}\n", term::dim(label)));
+    if output.trim().is_empty() {
+        text.push_str(&term::dim("    (nothing)\n"));
+    } else {
+        text.push_str(&indent(output.trim_end()));
+    }
+    text.push('\n');
 }
 
 fn push_captured(text: &mut String, prog: &ProgramOutput) {

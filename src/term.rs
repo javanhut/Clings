@@ -41,3 +41,16 @@ pub fn yellow(s: &str) -> String {
 pub fn cyan(s: &str) -> String {
     paint("1;36", s)
 }
+
+/// Clears the screen and moves the cursor to the top-left, like `clear`.
+/// Does nothing when stdout is not a terminal or `CLINGS_NO_CLEAR` is set.
+pub fn clear_screen() {
+    static ENABLED: OnceLock<bool> = OnceLock::new();
+    let enabled = *ENABLED.get_or_init(|| {
+        std::env::var_os("CLINGS_NO_CLEAR").is_none() && std::io::stdout().is_terminal()
+    });
+    if enabled {
+        // Clear scrollback too (3J) so the previous run is really gone.
+        print!("\x1b[2J\x1b[3J\x1b[H");
+    }
+}

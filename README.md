@@ -55,6 +55,7 @@ clings run [name]      # compile and run one exercise
 clings hint [name]     # show a hint
 clings list            # list all exercises with their status
 clings reset [name]    # restore an exercise to its original state
+clings reset --all     # restore every exercise and erase all progress (asks first; -y skips)
 clings check-all       # check every exercise
 ```
 
@@ -66,7 +67,17 @@ Global flags:
   `CLINGS_EDIT_CMD` environment variable.
 - `--no-editor`: never open an editor.
 
+Watch mode clears the terminal before every check so the latest result is
+always at the top. Set `CLINGS_NO_CLEAR=1` to keep the scrollback instead;
+`NO_COLOR=1` disables colours.
+
 Progress is saved in `.clings-state.txt` in the exercise directory.
+
+> **Developing Clings?** Do not solve exercises inside this source tree.
+> `cargo build` embeds whatever is in `exercises/` as the pristine templates
+> used by `clings init` and `clings reset`, so solved files would leak into
+> them. Run `clings init` somewhere else and work there. `clings dev check`
+> fails if an exercise in the tree already passes.
 
 ## How an exercise is checked
 

@@ -77,6 +77,8 @@ pub fn watch(app: &mut AppState, opts: WatchOptions) -> Result<()> {
 
     open_in_editor(&opts, app.current().path.as_path());
     let mut last_run = Instant::now() - Duration::from_secs(1);
+    // Set while we wait for a yes/no answer to "reset this exercise?".
+    let mut awaiting_reset_confirm = false;
     run_current(app, &opts, &mut last_run)?;
 
     while let Ok(event) = rx.recv() {
@@ -87,14 +89,46 @@ pub fn watch(app: &mut AppState, opts: WatchOptions) -> Result<()> {
                     continue;
                 }
                 let canonical = std::fs::canonicalize(&path).unwrap_or(path);
-                let Some(idx) = app.find_by_abs_path(&canonical) else {
-                    continue;
-                };
-                if idx != app.current_idx() {
-                    app.set_current_idx(idx)?;
+                match app.find_by_abs_path(&canonical) {
+                    Some(idx) => {
+                        if idx != app.current_idx() {
+                            app.set_current_idx(idx)?;
+                        }
+                    }
+                    None => {
+                        // A header or support file next to the current
+                        // exercise (multi-file exercises) re-runs it.
+                        if !is_support_file_for(app, &canonical) {
+                            continue;
+                        }
+                    }
                 }
                 run_current(app, &opts, &mut last_run)?;
-                drain_file_events(&rx);
+                if drain_file_events(&rx) {
+                    break;
+                }
+            }
+            Event::Input(line) if awaiting_reset_confirm => {
+                awaiting_reset_confirm = false;
+                if matches!(line.trim(), "y" | "Y" | "yes") {
+                    let idx = app.current_idx();
+                    app.reset(idx, false)?;
+                    println!(
+                        "{}",
+                        term::green(&format!(
+                            "{} has been restored to its original state.",
+                            app.current().display_name()
+                        ))
+                    );
+                    open_in_editor(&opts, app.current().path.as_path());
+                    run_current(app, &opts, &mut last_run)?;
+                    if drain_file_events(&rx) {
+                        break;
+                    }
+                } else {
+                    println!("Nothing was changed.");
+                    prompt(app);
+                }
             }
             Event::Input(line) => match line.trim() {
                 "" => {}
@@ -114,7 +148,9 @@ pub fn watch(app: &mut AppState, opts: WatchOptions) -> Result<()> {
                     app.set_current_idx(next)?;
                     open_in_editor(&opts, app.current().path.as_path());
                     run_current(app, &opts, &mut last_run)?;
-                    drain_file_events(&rx);
+                    if drain_file_events(&rx) {
+                        break;
+                    }
                 }
                 "h" | "hint" => {
                     println!(
@@ -135,7 +171,18 @@ pub fn watch(app: &mut AppState, opts: WatchOptions) -> Result<()> {
                 }
                 "r" | "run" => {
                     run_current(app, &opts, &mut last_run)?;
-                    drain_file_events(&rx);
+                    if drain_file_events(&rx) {
+                        break;
+                    }
+                }
+                "x" | "reset" => {
+                    print!(
+                        "{} Reset {} to its original state? Your changes to the file will be lost. [y/N] ",
+                        term::yellow("Warning:"),
+                        term::bold(&app.current().display_name())
+                    );
+                    let _ = io::stdout().flush();
+                    awaiting_reset_confirm = true;
                 }
                 "q" | "quit" | "exit" => break,
                 other => {
@@ -155,28 +202,35 @@ pub fn watch(app: &mut AppState, opts: WatchOptions) -> Result<()> {
     Ok(())
 }
 
-fn drain_file_events(rx: &mpsc::Receiver<Event>) {
+/// True when `path` is a `.c` or `.h` file in the current exercise's
+/// directory that is not itself an exercise.
+fn is_support_file_for(app: &AppState, path: &Path) -> bool {
+    let is_source = path.extension().is_some_and(|e| e == "c" || e == "h");
+    is_source && path.parent() == app.current().abs_path.parent()
+}
+
+/// Discards the burst of file events an editor fires per save. Returns
+/// `true` if stdin reached end-of-file meanwhile, so the caller can stop.
+fn drain_file_events(rx: &mpsc::Receiver<Event>) -> bool {
     // Give the editor's burst of events a moment to arrive, then discard it.
     thread::sleep(Duration::from_millis(100));
-    let mut kept = Vec::new();
+    let mut eof = false;
     while let Ok(ev) = rx.try_recv() {
-        if !matches!(ev, Event::FileChanged(_)) {
-            kept.push(ev);
-        }
-    }
-    // Input events cannot be put back on the receiver; they are rare enough
-    // during a run that handling them here is acceptable.
-    for ev in kept {
-        if let Event::Input(line) = ev {
-            eprintln!(
+        match ev {
+            Event::FileChanged(_) => {}
+            // Input events cannot be put back on the receiver; they are
+            // rare enough during a run that dropping them is acceptable.
+            Event::Input(line) => eprintln!(
                 "{}",
                 term::dim(&format!(
                     "(ignored input `{}` typed during a run)",
                     line.trim()
                 ))
-            );
+            ),
+            Event::Eof => eof = true,
         }
     }
+    eof
 }
 
 /// Prints the one-line watch-mode header shown at the top of every run.
@@ -259,7 +313,7 @@ fn prompt(app: &AppState) {
     let _ = app;
     println!(
         "{}",
-        term::dim("n:next  h:hint  l:list  c:check-all  r:run again  q:quit")
+        term::dim("n:next  h:hint  l:list  c:check-all  r:run again  x:reset  q:quit")
     );
     print!("> ");
     let _ = io::stdout().flush();

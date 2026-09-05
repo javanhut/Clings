@@ -1,10 +1,4 @@
-// strings3.c
-//
-// Implement `reverse` so that it reverses the string *in place*: swap the
-// first and last characters, then the second and second-to-last, and so
-// on until you meet in the middle. Expected output:
-//
-//     reversed: sgnilc
+// strings3.c - solution
 
 #include <stdio.h>
 #include <string.h>
@@ -13,19 +7,24 @@ void reverse(char *s)
 {
     size_t len = strlen(s);
 
-    for (size_t i = 0, j = len - 1; i < j; i++, j--) {
+    for (size_t i = 0; i < len / 2; i++) {
         char tmp = s[i];
-        s[i] = s[j];
-        s[j] = tmp;
+        s[i] = s[len - 1 - i];
+        s[len - 1 - i] = tmp;
     }
 }
 
 int main(void)
 {
     char word[] = "clings";
+    char one[] = "a";
+    char empty[] = "";
 
     reverse(word);
-
     printf("reversed: %s\n", word);
+    reverse(one);
+    printf("reversed: %s\n", one);
+    reverse(empty);
+    printf("reversed: %s\n", empty);
     return 0;
 }

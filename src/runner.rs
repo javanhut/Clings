@@ -2,10 +2,11 @@
 //! resulting binary and checks its output.
 
 use std::{
+    cell::OnceCell,
     env,
     ffi::OsString,
     fs,
-    io::Read,
+    io::{Read, Write},
     path::{Path, PathBuf},
     process::{Command, ExitStatus, Stdio},
     thread,
@@ -20,11 +21,16 @@ use crate::{info_file::CStd, term};
 const RUN_TIMEOUT: Duration = Duration::from_secs(10);
 /// Where compiled binaries go, relative to the working directory.
 const BIN_DIR: &str = "target/clings";
+/// How many lines of a sanitizer report are shown before it is cut off.
+const MAX_SANITIZER_LINES: usize = 30;
 
 #[derive(Debug, Clone)]
 pub struct Toolchain {
     pub cc: OsString,
     pub version: String,
+    /// Whether `-fsanitize=address,undefined` works with this compiler.
+    /// Probed lazily the first time an exercise asks for sanitizers.
+    sanitizers: OnceCell<bool>,
 }
 
 impl Toolchain {
@@ -52,13 +58,56 @@ impl Toolchain {
                         .unwrap_or_default()
                         .trim()
                         .to_string();
-                    return Ok(Self { cc, version });
+                    return Ok(Self {
+                        cc,
+                        version,
+                        sanitizers: OnceCell::new(),
+                    });
                 }
             }
         }
         bail!(
             "No C compiler found. Install gcc or clang, or point the CC environment variable at your compiler."
         )
+    }
+
+    /// Compiles a trivial program with the sanitizers enabled to find out
+    /// whether this compiler (and its runtime libraries) support them.
+    pub fn sanitizers_supported(&self) -> bool {
+        *self.sanitizers.get_or_init(|| {
+            let dir = env::temp_dir().join(format!("clings-probe-{}", std::process::id()));
+            if fs::create_dir_all(&dir).is_err() {
+                return false;
+            }
+            let src = dir.join("probe.c");
+            let bin = dir.join(format!("probe{}", env::consts::EXE_SUFFIX));
+            if fs::write(&src, "int main(void) { return 0; }\n").is_err() {
+                return false;
+            }
+            let ok = Command::new(&self.cc)
+                .args(["-fsanitize=address,undefined", "-o"])
+                .arg(&bin)
+                .arg(&src)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null())
+                .status()
+                .map(|s| s.success())
+                .unwrap_or(false);
+            let _ = fs::remove_dir_all(&dir);
+            if !ok {
+                eprintln!(
+                    "{}",
+                    term::yellow(
+                        "Note: your compiler does not support -fsanitize=address,undefined, so Clings \
+                         cannot detect memory errors and undefined behavior automatically. Exercises \
+                         are checked by output only. Installing gcc or clang with sanitizer runtime \
+                         libraries (e.g. libasan/libubsan) fixes this."
+                    )
+                );
+            }
+            ok
+        })
     }
 }
 
@@ -67,8 +116,14 @@ pub struct CheckSpec<'a> {
     /// Used to name the compiled binary.
     pub bin_name: &'a str,
     pub source: &'a Path,
+    /// Support files; the `.c` ones are compiled and linked with `source`.
+    pub extra_sources: &'a [PathBuf],
     pub std: CStd,
     pub flags: &'a [String],
+    /// Command-line arguments the program is started with.
+    pub args: &'a [String],
+    /// Text fed to the program on standard input.
+    pub stdin: &'a str,
     pub expected_stdout: &'a str,
     pub expected_exit: i32,
 }
@@ -87,6 +142,10 @@ struct ProgramOutput {
     stderr: String,
 }
 
+fn is_sanitizer_flag(flag: &str) -> bool {
+    flag.starts_with("-fsanitize") || flag.starts_with("-fno-sanitize")
+}
+
 impl Toolchain {
     pub fn check(&self, spec: &CheckSpec) -> Result<RunReport> {
         let bin_dir = Path::new(BIN_DIR);
@@ -100,14 +159,43 @@ impl Toolchain {
                 spec.source.display()
             );
         }
+        for extra in spec.extra_sources {
+            if !extra.is_file() {
+                bail!(
+                    "Support file {} does not exist. Run `clings reset` to restore it.",
+                    extra.display()
+                );
+            }
+        }
 
-        // 1. Compile.
+        let extra_c: Vec<&PathBuf> = spec
+            .extra_sources
+            .iter()
+            .filter(|p| p.extension().is_some_and(|e| e == "c"))
+            .collect();
+
+        // Drop the sanitizer flags if this compiler cannot handle them.
+        let wants_sanitizers = spec.flags.iter().any(|f| is_sanitizer_flag(f));
+        let flags: Vec<&String> = if wants_sanitizers && !self.sanitizers_supported() {
+            spec.flags
+                .iter()
+                .filter(|f| !is_sanitizer_flag(f))
+                .collect()
+        } else {
+            spec.flags.iter().collect()
+        };
+
+        // 1. Compile. Flags go after the sources so that link flags such
+        //    as `-lm` in required_flags work with linkers that use
+        //    --as-needed (libraries named before the objects that need them
+        //    would be dropped).
         let out = Command::new(&self.cc)
             .arg(spec.std.flag())
-            .args(spec.flags)
             .arg("-o")
             .arg(&bin)
             .arg(spec.source)
+            .args(&extra_c)
+            .args(&flags)
             .stdin(Stdio::null())
             .output()
             .with_context(|| {
@@ -140,12 +228,31 @@ impl Toolchain {
         }
 
         // 2. Run.
-        let prog = run_with_timeout(&bin)?;
+        let prog = run_with_timeout(&bin, spec.args, spec.stdin)?;
         let mut text = String::new();
         if !diagnostics.is_empty() {
             // Notes etc. that are neither errors nor warnings.
             text.push_str(&indent(&diagnostics));
             text.push('\n');
+        }
+
+        if let Some(headline) = sanitizer_headline(&prog.stderr) {
+            text.push_str(&format!("{}\n", term::red(headline)));
+            text.push_str(&term::dim(
+                "The first lines of the report say what went wrong and on which line of your file.\n",
+            ));
+            if !prog.stdout.trim().is_empty() {
+                push_output(&mut text, "Output before the error:", &prog.stdout);
+            }
+            text.push_str(&format!("{}\n", term::dim("Sanitizer report:")));
+            text.push_str(&indent(&truncate_lines(
+                prog.stderr.trim_end(),
+                MAX_SANITIZER_LINES,
+            )));
+            return Ok(RunReport {
+                passed: false,
+                text,
+            });
         }
 
         let Some(status) = prog.status else {
@@ -218,6 +325,30 @@ impl Toolchain {
             text,
         })
     }
+}
+
+/// Recognizes the reports printed by AddressSanitizer, LeakSanitizer and
+/// UndefinedBehaviorSanitizer and turns them into a one-line verdict.
+fn sanitizer_headline(stderr: &str) -> Option<&'static str> {
+    if stderr.contains("LeakSanitizer") {
+        Some("✗ LeakSanitizer: memory was allocated but never freed.")
+    } else if stderr.contains("AddressSanitizer") {
+        Some("✗ AddressSanitizer: the program accessed memory it does not own.")
+    } else if stderr.contains("runtime error:") {
+        Some("✗ UndefinedBehaviorSanitizer: the program relied on undefined behavior.")
+    } else {
+        None
+    }
+}
+
+fn truncate_lines(s: &str, max: usize) -> String {
+    let total = s.lines().count();
+    if total <= max {
+        return s.to_string();
+    }
+    let mut out: String = s.lines().take(max).collect::<Vec<_>>().join("\n");
+    out.push_str(&format!("\n... ({} more lines)", total - max));
+    out
 }
 
 /// Appends a labelled, indented block of program output. An empty output is
@@ -318,13 +449,28 @@ fn render_diff(expected: &[String], actual: &[String]) -> String {
     out
 }
 
-fn run_with_timeout(bin: &PathBuf) -> Result<ProgramOutput> {
+fn run_with_timeout(bin: &PathBuf, args: &[String], stdin: &str) -> Result<ProgramOutput> {
     let mut child = Command::new(bin)
-        .stdin(Stdio::null())
+        .args(args)
+        .stdin(if stdin.is_empty() {
+            Stdio::null()
+        } else {
+            Stdio::piped()
+        })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .with_context(|| format!("Failed to run {}", bin.display()))?;
+
+    // Feed stdin from a separate thread so a program that never reads it
+    // cannot make us block on a full pipe.
+    if let Some(mut child_stdin) = child.stdin.take() {
+        let input = stdin.to_string();
+        thread::spawn(move || {
+            let _ = child_stdin.write_all(input.as_bytes());
+            // Dropping child_stdin closes the pipe, so the program sees EOF.
+        });
+    }
 
     let mut stdout = child.stdout.take().expect("stdout is piped");
     let mut stderr = child.stderr.take().expect("stderr is piped");
@@ -377,5 +523,26 @@ mod tests {
     fn warnings_are_detected() {
         assert!(has_warnings("x.c:3:5: warning: unused variable"));
         assert!(!has_warnings("x.c:3:5: note: something"));
+    }
+
+    #[test]
+    fn sanitizer_reports_are_recognized() {
+        assert!(sanitizer_headline("==1==ERROR: AddressSanitizer: heap-use-after-free").is_some());
+        assert!(sanitizer_headline("x.c:3:5: runtime error: signed integer overflow").is_some());
+        assert!(sanitizer_headline("==1==ERROR: LeakSanitizer: detected memory leaks").is_some());
+        assert!(sanitizer_headline("just some stderr text").is_none());
+    }
+
+    #[test]
+    fn sanitizer_flags_are_recognized() {
+        assert!(is_sanitizer_flag("-fsanitize=address,undefined"));
+        assert!(is_sanitizer_flag("-fno-sanitize-recover=undefined"));
+        assert!(!is_sanitizer_flag("-Wall"));
+    }
+
+    #[test]
+    fn truncation_keeps_short_text() {
+        assert_eq!(truncate_lines("a\nb", 5), "a\nb");
+        assert_eq!(truncate_lines("a\nb\nc", 2), "a\nb\n... (1 more lines)");
     }
 }

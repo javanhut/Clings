@@ -1,10 +1,4 @@
-// strings2.c
-//
-// `==` on two strings compares their addresses, not their contents, so two
-// different copies of "yes" are never "equal". Use the right function from
-// <string.h> to compare the contents. Expected output:
-//
-//     Confirmed
+// strings2.c - solution
 
 #include <stdio.h>
 #include <string.h>
@@ -16,7 +10,10 @@ int main(void)
     if (strcmp(answer, "yes") == 0) {
         printf("Confirmed\n");
     } else {
-        printf("Not confirmed\n");
+        printf("Denied\n");
+    }
+    if (strcmp("apple", "banana") < 0) {
+        printf("\"apple\" sorts before \"banana\"\n");
     }
     return 0;
 }

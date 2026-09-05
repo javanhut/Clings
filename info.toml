@@ -6,21 +6,43 @@
 # Per-exercise fields:
 #   name             (required) file stem of the .c file
 #   dir              topic directory below exercises/ and solutions/
-#   description      one-line summary shown by `clings list`
+#   description      one-line summary shown by `clings list`; starts with
+#                    "Fix:" (repair a broken program), "Write:" (implement
+#                    something from a spec) or "Project:" (a larger program)
 #   hint             (required) shown by `clings hint`
 #   std              c89 | c99 | c11 | c17 (default) | c23
 #   expected_stdout  exact stdout the program must print
-#   required_flags   extra compiler flags for this exercise
 #   expected_exit    exit code the program must return (default 0)
+#   args             command-line arguments the program is started with
+#   stdin            text fed to the program on standard input
+#   extra_sources    further .c files in the exercise's directory that are
+#                    compiled and linked with the exercise (for multi-file
+#                    exercises about headers and linkage)
+#   required_flags   extra compiler flags for this exercise
 #   skip_check_unsolved  `clings dev check` will not verify that the unsolved
 #                    exercise fails
+#
+# This file is generated from the solutions: expected_stdout is whatever the
+# reference solution prints. Edit the exercise, the solution and the hint,
+# then regenerate.
 
 format_version = 1
 
 # Flags passed to the compiler for every exercise. Warnings fail an exercise.
-default_flags = ["-Wall", "-Wextra"]
+# The sanitizers make out-of-bounds accesses, use-after-free, leaks and
+# undefined behavior (signed overflow, bad shifts, ...) fail at run time
+# instead of silently "working". Clings drops the -fsanitize flags
+# automatically on compilers that do not support them.
+default_flags = [
+    "-Wall",
+    "-Wextra",
+    "-g",
+    "-fsanitize=address,undefined",
+    "-fno-sanitize-recover=undefined",
+]
 
 welcome_message = """
+
        Welcome to...
         ____ _ _
        / ___| (_)_ __   __ _ ___
@@ -29,24 +51,38 @@ welcome_message = """
        \\____|_|_|_| |_|\\__, |___/
                        |___/
 
-Clings is a set of small exercises to get you used to reading and writing C.
-Each exercise is a C file with something wrong or missing in it. Make it
-compile without warnings and print the expected output, and you are done.
+Clings is a set of exercises that take you from your first compile error to
+writing real C: pointers, memory management, data structures, the
+preprocessor, I/O and the undefined behavior that bites everyone.
 
-Open the exercise file shown below in your editor, fix it, and save. Clings
-checks it again automatically. Stuck? Press `h` for a hint. Reference
-solutions are in the solutions/ directory, but try the hint first!
+There are three kinds of exercise:
+  Fix:     a program with a bug or a gap. Repair it.
+  Write:   a specification and a test harness. You write the code.
+  Project: a larger program that combines several topics.
+
+Every exercise must compile without warnings and print exactly the expected
+output. The compiler runs with AddressSanitizer and UndefinedBehaviorSanitizer,
+so memory errors and undefined behavior fail loudly instead of hiding.
+
+Each file starts with a long comment: what the concept is, when real programs
+use it, and the task. Read it. Stuck? Press `h` for a hint. Lost a concept
+later on? `clings reset 06_pointers` gives you a whole topic back to redo.
 """
 
 final_message = """
+
 That was every exercise Clings has for you. Well done!
 
 Where to go from here:
-  - Read "The C Programming Language" by Kernighan and Ritchie.
-  - Write a small program of your own: a to-do list, a calculator, a tiny
-    text adventure. Compile it with -Wall -Wextra and keep it warning-free.
-  - Try compiling your programs with both gcc and clang, and with
-    -fsanitize=address,undefined to catch memory bugs.
+  - Read "The C Programming Language" by Kernighan and Ritchie, then
+    "Modern C" by Jens Gustedt for the C11/C17 view.
+  - Write a real tool: a line editor, a JSON parser, an HTTP client with
+    sockets, a tiny virtual machine. Keep it warning-free under
+    -Wall -Wextra -fsanitize=address,undefined.
+  - Read other people's C: the Redis, SQLite and Lua sources are small,
+    readable and beautifully engineered.
+  - Forgot something? `clings reset --all --keep-file` lets you redo the
+    whole course while keeping your old answers around to compare.
 """
 
 # ---------------------------------------------------------------------------
@@ -56,10 +92,11 @@ Where to go from here:
 [[exercises]]
 name = "intro1"
 dir = "00_intro"
-description = "Your first compile error."
+description = "Fix: your first compile error."
 hint = """
 Every C statement ends with a semicolon. Look at the line with printf: the
-compiler even tells you the line number where it expected a `;`."""
+compiler even tells you the line number where it expected a `;`.
+"""
 expected_stdout = """
 Hello, Clings!
 """
@@ -67,13 +104,31 @@ Hello, Clings!
 [[exercises]]
 name = "intro2"
 dir = "00_intro"
-description = "Newlines are your job, not printf's."
+description = "Fix: newlines are your job, not printf's."
 hint = """
 Inside a string, `\\n` is the newline character. Add one at the end of each
-string you print."""
+string you print.
+"""
 expected_stdout = """
 I am
 learning C
+"""
+
+[[exercises]]
+name = "intro3"
+dir = "00_intro"
+description = "Write: printf format specifiers."
+hint = """
+One printf per line is easiest: printf("Name: %s\\n", name); and so on.
+%.2f prints a double with two decimals. A literal percent sign is written
+as %% in a format string.
+"""
+expected_stdout = """
+Name: Ada
+Age: 36
+Height: 1.70 m
+Initial: A
+Progress: 100%
 """
 
 # ---------------------------------------------------------------------------
@@ -83,10 +138,11 @@ learning C
 [[exercises]]
 name = "variables1"
 dir = "01_variables"
-description = "Declare before use."
+description = "Fix: declare before use."
 hint = """
 A declaration names the type and the variable, for example `int x;`. You can
-declare and assign in one go: `int x = 42;`."""
+declare and assign in one go: `int x = 42;`.
+"""
 expected_stdout = """
 x is 42
 """
@@ -94,10 +150,11 @@ x is 42
 [[exercises]]
 name = "variables2"
 dir = "01_variables"
-description = "const means constant."
+description = "Fix: const means constant."
 hint = """
 `count` needs to change inside the loop, so it must not be `const`. Remove
-the `const` from its declaration."""
+the `const` from its declaration.
+"""
 expected_stdout = """
 count is 5
 """
@@ -105,12 +162,42 @@ count is 5
 [[exercises]]
 name = "variables3"
 dir = "01_variables"
-description = "Pick a type that fits the value."
+description = "Fix: pick a type that fits the value."
 hint = """
 Numbers with a fractional part need a floating-point type: `float` or
-`double`. `double` is the usual choice, and it matches `%f` in printf."""
+`double`. `double` is the usual choice, and it matches `%f` in printf.
+"""
 expected_stdout = """
 Price: 9.99
+"""
+
+[[exercises]]
+name = "variables4"
+dir = "01_variables"
+description = "Fix: block scope and shadowing."
+hint = """
+Move `int largest = 0;` out of the loop, to just before the `for`. Then the
+loop updates that one variable, and it is still in scope for the printf.
+"""
+expected_stdout = """
+largest is 42
+"""
+
+[[exercises]]
+name = "variables5"
+dir = "01_variables"
+description = "Write: choose types and do arithmetic."
+hint = """
+width, height, area and perimeter are ints; scale and the scaled area are
+doubles. `area * scale` is automatically computed in double because one
+operand is a double. Tiles fit `area / 16` times and `area % 16` units are
+left over. Print the scaled area with %.1f.
+"""
+expected_stdout = """
+Area: 21
+Perimeter: 20
+Scaled area: 31.5
+Tiles: 1, leftover: 5
 """
 
 # ---------------------------------------------------------------------------
@@ -120,11 +207,13 @@ Price: 9.99
 [[exercises]]
 name = "types1"
 dir = "02_types"
-description = "Integer division truncates."
+description = "Fix: integer division truncates."
 hint = """
 If at least one operand of `/` is a floating-point value, the division is
-done in floating point. A cast converts a value: `(double)a` is `a` as a
-double. Cast *before* dividing, not after: `(double)(a / b)` is still 3.0."""
+done in floating point. Cast *before* dividing: `(double)a / b`.
+`(double)(a / b)` is still 3.0 because the integer division already
+happened.
+"""
 expected_stdout = """
 7 / 2 = 3.5
 """
@@ -132,34 +221,86 @@ expected_stdout = """
 [[exercises]]
 name = "types2"
 dir = "02_types"
-description = "Characters are small integers."
+description = "Fix: characters are small integers."
 hint = """
-Since 'A' + 1 is 'B', the letter two places after `c` is simply `c + 2`."""
+Since 'A' + 1 is 'B', the letter two places after `c` is simply `c + 2`.
+The value of a digit character is `digit - '0'`, because the digit codes
+are consecutive.
+"""
 expected_stdout = """
 C has code 67
+digit '7' has value 7
 """
 
 [[exercises]]
 name = "types3"
 dir = "02_types"
-description = "Every integer type has a range."
+description = "Fix: every type has a range."
 hint = """
-`unsigned char` holds 0..255. A plain `int` holds at least -32767..32767 (on
-most machines much more), so `int value = 250;` works fine with `%d`."""
+Change `unsigned char` to `int`. INT_MAX comes from <limits.h>; include it
+and use the name instead of typing the number.
+"""
 expected_stdout = """
 value is 260
+an int goes up to 2147483647
 """
 
 [[exercises]]
 name = "types4"
 dir = "02_types"
-description = "Where bool comes from."
-hint = """
-Add `#include <stdbool.h>` at the top of the file. It defines `bool`, `true`
-and `false` for C99 through C17."""
-std = "c17"
+description = "Fix: bool lives in a header before C23."
+hint = "Add `#include <stdbool.h>` at the top of the file."
 expected_stdout = """
 Ready!
+42 stored in a bool is 1
+"""
+
+[[exercises]]
+name = "types5"
+dir = "02_types"
+description = "Fix: signed meets unsigned."
+hint = """
+First bug: make `limit` an `int` (and cast it to unsigned only in the
+printf, where %u needs it), or cast `limit` to int in the comparison.
+Second bug: `i >= 0` is always true for a size_t. The idiom for counting
+down with an unsigned index is `for (size_t i = count; i-- > 0;)`: the
+condition decrements *after* the test, so the body sees count-1 ... 0 and
+the loop stops when i was 0.
+"""
+expected_stdout = """
+-1 is smaller than 10
+4 3 2 1 0 
+"""
+
+[[exercises]]
+name = "types6"
+dir = "02_types"
+description = "Write: fixed-width integers and how to print them."
+hint = """
+`int64_t sum = (int64_t)a + b;` converts a first, so the addition is done
+in 64 bits. Print sizeof with %zu, and 32/64-bit values with
+`"%" PRId32` and `"%" PRId64` from <inttypes.h> (they are string pieces
+that the compiler glues to the rest of the format).
+"""
+expected_stdout = """
+int32_t is 4 bytes, int64_t is 8 bytes
+INT32_MAX = 2147483647
+sum as int64_t = 4294967294
+"""
+
+[[exercises]]
+name = "types7"
+dir = "02_types"
+description = "Write: floating point is not exact."
+hint = """
+nearly_equal: `return fabs(a - b) < epsilon;`. The loop: `for (int i = 0;
+i < 10; i++) sum += 0.1;`. That is all; the point of the exercise is to see
+the printed value 0.99999999999999989.
+"""
+expected_stdout = """
+sum = 0.99999999999999989
+sum == 1.0: no
+nearly_equal(sum, 1.0): yes
 """
 
 # ---------------------------------------------------------------------------
@@ -169,20 +310,34 @@ Ready!
 [[exercises]]
 name = "if1"
 dir = "03_control_flow"
-description = "= assigns, == compares."
-hint = """
-Change `if (x = 5)` to `if (x == 5)`. Tip: some people write `if (5 == x)`
-so that a forgotten `=` becomes a compile error instead of a silent bug."""
+description = "Fix: = assigns, == compares."
+hint = "Change `if (x = 5)` to `if (x == 5)`."
 expected_stdout = """
 x is not five
 """
 
 [[exercises]]
+name = "if2"
+dir = "03_control_flow"
+description = "Write: an if / else if chain."
+hint = """
+Test the ranges from most specific to least: `n < 0`, then `n == 0`, then
+`n >= 10`, then `n % 2 == 0` for even, else odd. Each branch is one printf
+with %d for n.
+"""
+expected_stdout = """
+-4 is negative
+0 is zero
+7 is a small positive odd number
+8 is a small positive even number
+10 is a large positive number
+"""
+
+[[exercises]]
 name = "loops1"
 dir = "03_control_flow"
-description = "An off-by-one in a for loop."
-hint = """
-`i < 10` stops before 10. To include 10, use `i <= 10` (or `i < 11`)."""
+description = "Fix: off by one."
+hint = "`i < 10` stops at 9. Use `i <= 10` to include 10."
 expected_stdout = """
 The sum of 1 to 10 is 55
 """
@@ -190,10 +345,11 @@ The sum of 1 to 10 is 55
 [[exercises]]
 name = "loops2"
 dir = "03_control_flow"
-description = "break versus continue."
+description = "Fix: break vs continue."
 hint = """
-`break` exits the loop as soon as it sees the first odd number (1). You want
-to *skip* odd numbers and keep looping: that is what `continue` does."""
+`break` leaves the loop the first time an odd number shows up (that is 1,
+right away). You want to *skip* odd numbers: use `continue`.
+"""
 expected_stdout = """
 2
 4
@@ -203,14 +359,90 @@ expected_stdout = """
 """
 
 [[exercises]]
+name = "loops3"
+dir = "03_control_flow"
+description = "Write: nested loops and aligned columns."
+hint = """
+An outer loop over row = 1..4 and an inner loop over col = 1..4. Inside,
+`printf("%3d", row * col);`. After the inner loop, print "\\n".
+"""
+expected_stdout = """
+  1  2  3  4
+  2  4  6  8
+  3  6  9 12
+  4  8 12 16
+"""
+
+[[exercises]]
+name = "loops4"
+dir = "03_control_flow"
+description = "Write: do-while and while."
+hint = """
+digit_sum: `int sum = 0; do { sum += n % 10; n /= 10; } while (n != 0);`.
+collatz_steps: `while (n != 1) { n = (n % 2 == 0) ? n / 2 : 3 * n + 1;
+steps++; }`.
+"""
+expected_stdout = """
+digit_sum(0) = 0
+digit_sum(98765) = 35
+collatz_steps(1) = 0
+collatz_steps(6) = 8
+collatz_steps(27) = 111
+"""
+
+[[exercises]]
 name = "switch1"
 dir = "03_control_flow"
-description = "switch fallthrough."
+description = "Fix: forgotten breaks."
 hint = """
-Add `break;` after the printf in every case (including default, for good
-measure). Without it, execution continues into the next case."""
+Add a `break;` after each printf so execution does not fall through to
+the next case.
+"""
 expected_stdout = """
 Wednesday
+"""
+
+[[exercises]]
+name = "switch2"
+dir = "03_control_flow"
+description = "Write: grouped cases."
+hint = """
+Stack the labels: `case 1: case 3: case 5: ... return 31;`, then the 30-day
+group, then `case 2: return leap ? 29 : 28;` and `default: return -1;`.
+"""
+expected_stdout = """
+month 1: 31 days
+month 2: 28 days
+month 2 (leap): 29 days
+month 4: 30 days
+month 12: 31 days
+month 13: -1 days
+"""
+
+[[exercises]]
+name = "ternary1"
+dir = "03_control_flow"
+description = "Write: ternary expressions and goto cleanup."
+hint = """
+max3: `int ab = a > b ? a : b; return ab > c ? ab : c;`.
+plural: `return n == 1 ? "" : "s";`.
+process: declare `int result = -1;` at the top. Each failure prints its
+message and does `goto cleanup;`. After step 3, set `result = 0;`. Then
+`cleanup:` followed by the "cleanup done" printf and `return result;`.
+"""
+expected_stdout = """
+max3(3, 9, 5) = 9
+max3(-1, -7, -3) = -1
+1 item, 2 items, 0 items
+step 1 ok
+step 2 failed
+cleanup done
+process(2) returned -1
+step 1 ok
+step 2 ok
+step 3 ok
+cleanup done
+process(4) returned 0
 """
 
 # ---------------------------------------------------------------------------
@@ -220,11 +452,12 @@ Wednesday
 [[exercises]]
 name = "functions1"
 dir = "04_functions"
-description = "Declare functions before calling them."
+description = "Fix: declare a function before calling it."
 hint = """
-Either move the whole `greet` function above `main`, or add a *prototype*
-before main: `void greet(void);`. Prototypes are what header files are full
-of."""
+Add a prototype above main: `void greet(void);`. (Moving the whole
+definition above main also works, but prototypes are what headers are
+made of, so practice that.)
+"""
 expected_stdout = """
 Hello from a function!
 """
@@ -232,10 +465,8 @@ Hello from a function!
 [[exercises]]
 name = "functions2"
 dir = "04_functions"
-description = "Return the value."
-hint = """
-The line `n * n;` computes a value and throws it away. Write
-`return n * n;` instead."""
+description = "Fix: a value must be returned."
+hint = "`return n * n;`"
 expected_stdout = """
 5 squared is 25
 """
@@ -243,10 +474,11 @@ expected_stdout = """
 [[exercises]]
 name = "functions3"
 dir = "04_functions"
-description = "Arguments are passed by value."
+description = "Fix: arguments are copies."
 hint = """
-Change the return type to `int` and return `n + 1`. In main, assign the
-result back: `x = increment(x);`."""
+Change the return type to int, `return n + 1;`, and in main write
+`x = increment(x);`.
+"""
 expected_stdout = """
 x is 2
 """
@@ -254,12 +486,82 @@ x is 2
 [[exercises]]
 name = "functions4"
 dir = "04_functions"
-description = "Recursion needs a base case."
-hint = """
-0! and 1! are both 1. Add `if (n <= 1) return 1;` at the top of the
-function, before the recursive call."""
+description = "Fix: recursion needs a base case."
+hint = "`if (n == 0) return 1;` at the top of factorial."
 expected_stdout = """
 5! = 120
+"""
+
+[[exercises]]
+name = "functions5"
+dir = "04_functions"
+description = "Write: gcd, is_prime, count_primes_below."
+hint = """
+gcd: `while (b != 0) { int t = a % b; a = b; b = t; } return a;`.
+is_prime: return false for n < 2; `for (int d = 2; d * d <= n; d++)`
+return false if `n % d == 0`; otherwise return true.
+count_primes_below: loop n from 2 to limit-1 and count is_prime(n).
+"""
+expected_stdout = """
+gcd(48, 18) = 6
+gcd(17, 5) = 1
+gcd(0, 9) = 9
+is_prime(1) = no
+is_prime(2) = yes
+is_prime(91) = no
+is_prime(97) = yes
+primes below 50: 15
+"""
+
+[[exercises]]
+name = "functions6"
+dir = "04_functions"
+description = "Write: static locals and file-scope state."
+hint = """
+Put `static int counter = 0;` above next_id. next_id does `counter++;
+return counter;` and reset_ids sets `counter = 0;`.
+Careful in main: C does not say in which order the arguments of one
+printf call are evaluated, so `printf("%d %d", next_id(), next_id())`
+may print "2 1" on some compilers. Call next_id into separate variables
+first, then print them.
+"""
+expected_stdout = """
+ids: 1 2 3
+after reset: 1 2
+"""
+
+[[exercises]]
+name = "functions7"
+dir = "04_functions"
+description = "Fix: return types and unused parameters."
+hint = """
+1. print_banner never returns anything: make it `void`.
+2. average divides two ints; divide by `2.0` (or cast) so the division
+   happens in floating point.
+3. `unused_flag` is never used: add `(void)unused_flag;` in the body.
+"""
+expected_stdout = """
+=== Report ===
+average of 3 and 4 is 3.5
+min of 3 and 4 is 3
+"""
+
+[[exercises]]
+name = "functions8"
+dir = "04_functions"
+description = "Write: recursive power, fib and hanoi."
+hint = """
+power: `if (exp == 0) return 1; return base * power(base, exp - 1);`
+fib: `if (n < 2) return n; return fib(n - 1) + fib(n - 2);`
+hanoi: `if (disks == 0) return 0; return 2 * hanoi(disks - 1) + 1;`
+"""
+expected_stdout = """
+power(2, 10) = 1024
+power(7, 0) = 1
+fib(10) = 55
+fib(20) = 6765
+hanoi(3) = 7
+hanoi(10) = 1023
 """
 
 # ---------------------------------------------------------------------------
@@ -269,10 +571,8 @@ expected_stdout = """
 [[exercises]]
 name = "arrays1"
 dir = "05_arrays"
-description = "Indices run from 0 to length - 1."
-hint = """
-The valid indices of `numbers[5]` are 0, 1, 2, 3, 4. The loop condition
-should be `i < 5`, not `i <= 5`."""
+description = "Fix: reading past the end of an array."
+hint = "The valid indices are 0 to 4. Change `i <= 5` to `i < 5`."
 expected_stdout = """
 10 20 30 40 50
 """
@@ -280,12 +580,8 @@ expected_stdout = """
 [[exercises]]
 name = "arrays2"
 dir = "05_arrays"
-description = "Counting elements with sizeof."
-hint = """
-`sizeof(numbers)` is the size of the whole array in bytes and
-`sizeof(numbers[0])` is the size of one element, so
-`sizeof(numbers) / sizeof(numbers[0])` is the number of elements. Note that
-this only works on a real array, not on a pointer to its first element."""
+description = "Fix: let sizeof count the elements."
+hint = "`size_t len = sizeof(numbers) / sizeof(numbers[0]);`"
 expected_stdout = """
 The array has 6 elements and their sum is 21
 """
@@ -293,13 +589,88 @@ The array has 6 elements and their sum is 21
 [[exercises]]
 name = "arrays3"
 dir = "05_arrays"
-description = "Two-dimensional arrays."
+description = "Fix: two-dimensional arrays."
 hint = """
-The outer loop walks the rows, so it runs `ROWS` times; the inner loop walks
-the columns of one row, so it runs `COLS` times."""
+The outer loop runs over rows (`r < ROWS`), the inner over columns
+(`c < COLS`).
+"""
 expected_stdout = """
 1 2 3
 4 5 6
+"""
+
+[[exercises]]
+name = "arrays4"
+dir = "05_arrays"
+description = "Fix: arrays decay to pointers in calls."
+hint = """
+Change the signature to `int sum(const int values[], size_t len)`, delete
+the sizeof line, and call it with
+`sum(numbers, sizeof(numbers) / sizeof(numbers[0]))`.
+"""
+expected_stdout = """
+sum is 150
+"""
+
+[[exercises]]
+name = "arrays5"
+dir = "05_arrays"
+description = "Write: read-only and in-place array functions."
+hint = """
+index_of_max: start with best = 0, loop i from 1, update best when
+values[i] > values[best] (strictly greater keeps the first of ties).
+reverse: two indices, `i` from the front and `j` from the back; swap while
+`i < j`. With size_t, write the back index as `len - 1 - i` and loop while
+`i < len / 2`, which is safe for len 0.
+count_if_even: count elements where `values[i] % 2 == 0`.
+print_array: print "(empty)" and return when len is 0; otherwise print a
+space before every element except the first, then a newline.
+"""
+expected_stdout = """
+3 8 -2 8 5
+max at index 1
+3 even numbers
+reversed: 5 8 -2 8 3
+single: 42
+empty: (empty)
+"""
+
+[[exercises]]
+name = "arrays6"
+dir = "05_arrays"
+description = "Write: passing 2D arrays to functions."
+hint = """
+transpose: two nested loops over r and c, `out[c][r] = in[r][c];`.
+row_sums: for each r, sum m[r][c] over c and print
+`printf("row %d: %d\\n", r, sum);`.
+"""
+expected_stdout = """
+row 0: 6
+row 1: 15
+transposed:
+1 4
+2 5
+3 6
+"""
+
+[[exercises]]
+name = "arrays7"
+dir = "05_arrays"
+description = "Write: binary search and sorted insert."
+hint = """
+find: `size_t lo = 0, hi = len; while (lo < hi) { size_t mid = lo +
+(hi - lo) / 2; if (a[mid] == target) return (int)mid; if (a[mid] < target)
+lo = mid + 1; else hi = mid; } return -1;`.
+insert_sorted: find the first pos with a[pos] >= value (or pos == *len).
+Shift from the end: `for (size_t i = *len; i > pos; i--) a[i] = a[i-1];`.
+Then `a[pos] = value; (*len)++;`.
+"""
+expected_stdout = """
+find(23) = 5
+find(2) = 0
+find(91) = 9
+find(50) = -1
+after insert: 2 5 8 12 16 23 38 50 56 72 91
 """
 
 # ---------------------------------------------------------------------------
@@ -309,21 +680,21 @@ expected_stdout = """
 [[exercises]]
 name = "pointers1"
 dir = "06_pointers"
-description = "Addresses and dereferencing."
-hint = """
-`&x` is the address of `x`. Initialize the pointer with `int *p = &x;`."""
+description = "Fix: address-of and dereference."
+hint = "`int *p = &x;` The `&` operator gives the address of x."
 expected_stdout = """
 x is 20
+p points to a value of 20
 """
 
 [[exercises]]
 name = "pointers2"
 dir = "06_pointers"
-description = "Swap two values through pointers."
+description = "Fix: swap through pointers."
 hint = """
-Declare the function as `void swap(int *a, int *b)`, use `*a` and `*b`
-inside it to read and write the pointed-to values, and call it with
-`swap(&a, &b);`."""
+`void swap(int *a, int *b)` with `int tmp = *a; *a = *b; *b = tmp;`, and
+in main call `swap(&a, &b);`.
+"""
 expected_stdout = """
 a = 2, b = 1
 """
@@ -331,26 +702,111 @@ a = 2, b = 1
 [[exercises]]
 name = "pointers3"
 dir = "06_pointers"
-description = "Pointer arithmetic."
+description = "Fix: pointer arithmetic."
 hint = """
-The array has 4 elements, so the last one is 3 elements after the first:
-`p = p + 3;`. Pointer arithmetic counts in elements, so this works for any
-element type."""
+`values + 1` is the second element, `values + count - 1` the last, and
+`last - first` the element distance (a ptrdiff_t).
+"""
 expected_stdout = """
 first: 5
+second: 10
 last: 20
+last is 3 elements after first
 """
 
 [[exercises]]
 name = "pointers4"
 dir = "06_pointers"
-description = "Check for NULL."
+description = "Fix: check for NULL."
 hint = """
-At the start of `print_length`, add
-`if (s == NULL) { printf("(null)\\n"); return; }`."""
+At the top of print_length: `if (s == NULL) { printf("(null)\\n");
+return; }`.
+"""
 expected_stdout = """
 hello has length 5
 (null)
+"""
+
+[[exercises]]
+name = "pointers5"
+dir = "06_pointers"
+description = "Write: output parameters."
+hint = """
+divmod: `if (b == 0) return false; *quotient = a / b; *remainder = a % b;
+return true;`.
+min_max: compute lo and hi in locals over the loop, then
+`if (min != NULL) *min = lo;` and the same for max.
+"""
+expected_stdout = """
+17 / 5 = 3 remainder 2
+division by zero
+min 3, max 42
+max only: 42
+"""
+
+[[exercises]]
+name = "pointers6"
+dir = "06_pointers"
+description = "Write: walking a range with a pointer."
+hint = """
+`for (const int *p = begin; p != end; p++)` and use `*p`. find_first
+returns `p` inside the loop when `*p == target`, and NULL after it.
+"""
+expected_stdout = """
+sum = 60
+sum of middle = 45
+15 found at index 2
+99 not found
+"""
+
+[[exercises]]
+name = "pointers7"
+dir = "06_pointers"
+description = "Fix: const correctness."
+hint = """
+1. shout must not write into s. Print each character converted with
+   toupper instead of modifying the string: putchar(toupper(...)).
+2. `size_t length(const char *s)`.
+3. `fixed` is a const pointer: it cannot be repointed at b. Drop the
+   `fixed = &b;` line and add b through the pointer: `*fixed += b;`.
+"""
+expected_stdout = """
+shout: HELLO
+length: 5
+total: 6
+"""
+
+[[exercises]]
+name = "pointers8"
+dir = "06_pointers"
+description = "Write: pointers to pointers."
+hint = """
+skip_spaces: `while (**cursor == ' ') (*cursor)++;`.
+take_word: loop while `**cursor != '\\0' && **cursor != ' '`; copy the
+character into out[n++] only if `n + 1 < cap`; always advance
+`(*cursor)++`. After the loop `out[n] = '\\0';`.
+choose: `*out = (*a > *b) ? a : b;`.
+"""
+expected_stdout = """
+word: 'hello'
+word: 'pointer'
+word: 'world'
+rest: ''
+larger is 9
+"""
+
+[[exercises]]
+name = "pointers9"
+dir = "06_pointers"
+description = "Fix: wild and dangling pointers."
+hint = """
+Give p something to point at: `int value = 0; int *p = &value;`.
+Move `int largest = values[0];` out of the inner block so it is still
+alive when `*best` is read after the block.
+"""
+expected_stdout = """
+doubled: 10
+largest: 42
 """
 
 # ---------------------------------------------------------------------------
@@ -360,46 +816,150 @@ hello has length 5
 [[exercises]]
 name = "strings1"
 dir = "07_strings"
-description = "strlen versus sizeof."
+description = "Fix: strlen vs sizeof."
 hint = """
-Include <string.h> and use `strlen(greeting)` instead of
-`sizeof(greeting)`. `strlen` returns a `size_t`, which is what `%zu` prints."""
+Include <string.h> and use `strlen(greeting)` for the character count;
+`sizeof(greeting)` is the byte count of the array (6, with the '\\0').
+"""
 expected_stdout = """
 hello has 5 characters
+the array takes 6 bytes
 """
 
 [[exercises]]
 name = "strings2"
 dir = "07_strings"
-description = "Comparing strings."
+description = "Fix: comparing strings."
 hint = """
-`strcmp(a, b)` returns 0 when the two strings have the same contents, so the
-condition becomes `if (strcmp(answer, "yes") == 0)`."""
+`strcmp(answer, "yes") == 0` tests for equal contents, and
+`strcmp("apple", "banana") < 0` tests the sort order.
+"""
 expected_stdout = """
 Confirmed
+"apple" sorts before "banana"
 """
 
 [[exercises]]
 name = "strings3"
 dir = "07_strings"
-description = "Reverse a string in place."
+description = "Write: reverse a string in place."
 hint = """
-Use two indices, one starting at 0 and one at `strlen(s) - 1`. Swap
-`s[i]` and `s[j]` (you need a temporary char), then move i forward and j
-backward while `i < j`."""
+`size_t len = strlen(s); for (size_t i = 0; i < len / 2; i++)` swap
+`s[i]` with `s[len - 1 - i]` through a temporary char. For len 0 the loop
+body never runs.
+"""
 expected_stdout = """
 reversed: sgnilc
+reversed: a
+reversed: 
 """
 
 [[exercises]]
 name = "strings4"
 dir = "07_strings"
-description = "Comparing against several characters."
+description = "Fix: || does not distribute."
 hint = """
-Each alternative needs its own comparison:
-`c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u'`."""
+Spell out each comparison: `c == 'a' || c == 'e' || c == 'i' || c == 'o'
+|| c == 'u'`.
+"""
 expected_stdout = """
 programming has 3 vowels
+"""
+
+[[exercises]]
+name = "strings5"
+dir = "07_strings"
+description = "Fix: string literals are read-only."
+hint = """
+Declare `char word[] = "hello";` in main, which makes a writable copy on
+the stack. Change print_twice to take `const char *greeting`.
+"""
+expected_stdout = """
+Hello
+Hello
+"""
+
+[[exercises]]
+name = "strings6"
+dir = "07_strings"
+description = "Write: strlen, strcpy, strcmp, strcat by hand."
+hint = """
+my_strlen: count until s[n] == '\\0'.
+my_strcpy: copy characters until and including the '\\0'; return dst.
+my_strcmp: `while (*a != '\\0' && *a == *b) { a++; b++; } return
+(unsigned char)*a - (unsigned char)*b;`.
+my_strcat: `my_strcpy(dst + my_strlen(dst), src); return dst;`.
+"""
+expected_stdout = """
+len("clings") = 6
+len("") = 0
+copy: clings
+cmp("abc", "abc") = 0
+cmp("abc", "abd") < 0
+cmp("b", "abc") > 0
+cmp("abc", "ab") > 0
+cat: clings rocks
+"""
+
+[[exercises]]
+name = "strings7"
+dir = "07_strings"
+description = "Fix: a buffer overflow, and snprintf."
+hint = """
+`int n = snprintf(out, cap, "%s/%s", dir, file); return n >= 0 &&
+(size_t)n < cap;`. snprintf writes at most cap bytes including the
+terminator and returns the untruncated length, so n >= cap means it did
+not fit.
+"""
+expected_stdout = """
+ok: /home/ada/notes.txt
+truncated: /home/ada/a-very-lo
+"""
+
+[[exercises]]
+name = "strings8"
+dir = "07_strings"
+description = "Write: strtol with error checking, strtok."
+hint = """
+parse_int: `char *end; errno = 0; long v = strtol(text, &end, 10);`
+then reject if `end == text` (nothing parsed), `*end != '\\0'` (junk after
+the number), `errno == ERANGE`, or v outside INT_MIN..INT_MAX. Otherwise
+`*out = (int)v; return true;`.
+sum_csv: `for (char *tok = strtok(line, ","); tok != NULL; tok =
+strtok(NULL, ","))`, call parse_int on each token, add or print
+"bad token: %s".
+"""
+expected_stdout = """
+parse "42" -> ok 42
+parse "-7" -> ok -7
+parse "12abc" -> error
+parse "" -> error
+parse "99999999999" -> error
+bad token: x
+bad token: 4.5
+sum = 60
+"""
+
+[[exercises]]
+name = "strings9"
+dir = "07_strings"
+description = "Write: ctype and three text algorithms."
+hint = """
+count_words: keep `bool in_space = true;`. For each char, `bool space =
+isspace((unsigned char)c)`; if in_space && !space, a word starts. Then
+`in_space = space`.
+title_case: same state; at a word start write toupper, elsewhere tolower.
+is_palindrome: i from the front, j from the back (as an exclusive bound,
+so compare s[j - 1]); skip non-alnum on either side; compare with
+tolower; return false on mismatch, true when i >= j.
+"""
+expected_stdout = """
+words: 5
+words: 0
+title: The Quick Brown Fox
+palindrome("A man, a plan, a canal: Panama") = yes
+palindrome("clings") = no
+palindrome("") = yes
 """
 
 # ---------------------------------------------------------------------------
@@ -409,20 +969,21 @@ programming has 3 vowels
 [[exercises]]
 name = "structs1"
 dir = "08_structs"
-description = "Define a struct."
+description = "Fix: define struct members."
 hint = """
-`name` is assigned a string literal, so `const char *name;` fits. `age` is
-printed with `%d`, so `int age;`."""
+Inside the struct: `const char *name;` and `int age;`. For q:
+`struct person q = {.name = "Grace", .age = 45};`.
+"""
 expected_stdout = """
 Ada is 36 years old
+Grace is 45 years old
 """
 
 [[exercises]]
 name = "structs2"
 dir = "08_structs"
-description = "Pointers to structs use ->."
-hint = """
-Replace `p.x` with `p->x` and `p.y` with `p->y`."""
+description = "Fix: -> for members through a pointer."
+hint = "`p->x += dx;` and `p->y += dy;`."
 expected_stdout = """
 Point moved to (3, 4)
 """
@@ -430,15 +991,90 @@ Point moved to (3, 4)
 [[exercises]]
 name = "structs3"
 dir = "08_structs"
-description = "Arrays of structs."
-hint = """
-`items[i]` is one struct, so its members are `items[i].name` and
-`items[i].stock`."""
+description = "Fix: arrays of structs."
+hint = "`items[i].name`, `items[i].stock`, and `total += items[i].stock;`."
 expected_stdout = """
 apple: 10
 pear: 12
 plum: 20
 Total: 42
+"""
+
+[[exercises]]
+name = "structs4"
+dir = "08_structs"
+description = "Fix: structs are copied when passed by value."
+hint = """
+Change the parameters to `struct account *acc` (and `const struct
+account *acc` for print_account), use `acc->balance` inside, and pass
+`&acc` at every call in main.
+"""
+expected_stdout = """
+ada: 100
+ada: 150
+insufficient funds
+ada: 150
+"""
+
+[[exercises]]
+name = "structs5"
+dir = "08_structs"
+description = "Write: typedef, by-value structs, compound literals."
+hint = """
+`typedef struct { double x; double y; } vec2;`
+vec_add: `return (vec2){a.x + b.x, a.y + b.y};` and vec_scale similarly.
+vec_dot: `a.x * b.x + a.y * b.y`. vec_len: `sqrt(vec_dot(v, v))`.
+"""
+required_flags = ["-lm"]
+expected_stdout = """
+a + b = (4.0, 6.0)
+2 * a = (2.0, 4.0)
+a . b = 11.0
+|b| = 5.0
+(a + b) scaled by 0.5 = (2.0, 3.0)
+"""
+
+[[exercises]]
+name = "structs6"
+dir = "08_structs"
+description = "Write: nested structs and a bounded list."
+hint = """
+rect_area: `(r.max.x - r.min.x) * (r.max.y - r.min.y)`.
+rect_contains: p.x between min.x and max.x inclusive, same for y.
+inventory_add: return false if `inv->count >= MAX_ITEMS`; otherwise fill
+`inv->items[inv->count]` and increment count.
+inventory_remove: loop over items; on `strcmp(name) == 0` do
+`inv->items[i] = inv->items[inv->count - 1]; inv->count--; return true;`.
+"""
+expected_stdout = """
+area: 12
+(3, 3) inside: yes
+(6, 1) inside: no
+added apple, pear, plum
+inventory full
+removed pear
+no such item: kiwi
+apple: 10
+plum: 20
+"""
+
+[[exercises]]
+name = "structs7"
+dir = "08_structs"
+description = "Write: tagged unions, and struct padding."
+hint = """
+Both functions are a `switch (v->kind)` with one case per tag, reading
+`v->as.i`, `v->as.d` or `v->as.s`. value_as_double returns the int
+converted, the double as is, and 0.0 for strings. Add a `return 0.0;`
+after the switch so the compiler sees every path returns.
+"""
+expected_stdout = """
+int 42
+double 2.50
+string hello
+sum of numeric values: 44.5
+sizeof(struct padded) = 12
+sizeof(struct packed) = 8
 """
 
 # ---------------------------------------------------------------------------
@@ -448,9 +1084,8 @@ Total: 42
 [[exercises]]
 name = "enums1"
 dir = "09_enums"
-description = "Enums and switch."
-hint = """
-Add `case GREEN: return "green";` between the RED and BLUE cases."""
+description = "Fix: a missing case."
+hint = "Add `case GREEN: return \"green\";` to the switch."
 expected_stdout = """
 GREEN has value 1
 GREEN is called green
@@ -459,40 +1094,176 @@ GREEN is called green
 [[exercises]]
 name = "enums2"
 dir = "09_enums"
-description = "Counting enum values."
+description = "Fix: a count sentinel and enum arithmetic."
 hint = """
-Because `DIRECTION_COUNT` comes right after `WEST`, its value is 4, the
-number of real directions. Use it as the loop bound: `d < DIRECTION_COUNT`."""
+The sentinel is `DIRECTION_COUNT` (the array already uses that name).
+turn_right: `return (d + 1) % DIRECTION_COUNT;`.
+"""
 expected_stdout = """
 0: north
 1: east
 2: south
 3: west
+right of west is north
+"""
+
+[[exercises]]
+name = "enums3"
+dir = "09_enums"
+description = "Write: a state machine with enum and switch."
+hint = """
+state_name: a switch returning "closed", "open", "locked".
+next_state: switch on s; in CLOSED, 'o' gives OPEN and 'l' gives LOCKED;
+in OPEN, 'c' gives CLOSED; in LOCKED, 'u' gives CLOSED; everything else
+returns s.
+run: `for (const char *e = events; *e; e++) { enum door_state next =
+next_state(s, *e); printf("%c: %s -> %s\\n", *e, state_name(s),
+state_name(next)); s = next; }`.
+"""
+expected_stdout = """
+start: closed
+o: closed -> open
+l: open -> open
+c: open -> closed
+l: closed -> locked
+o: locked -> locked
+u: locked -> closed
+end: closed
 """
 
 # ---------------------------------------------------------------------------
-# 10_memory
+# 10_bits
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "bits1"
+dir = "10_bits"
+description = "Fix: bitwise vs logical operators."
+hint = """
+Testing a bit is `flags & PERM_READ` (single &). "Read or write" as a
+mask is `PERM_READ | PERM_WRITE` (single |). The three `&&`/`||` in the
+tests are the bugs.
+"""
+expected_stdout = """
+flags = 0x5
+read: yes
+write: no
+read or write set: yes
+flags with write: 0x7
+flags without read: 0x4
+"""
+
+[[exercises]]
+name = "bits2"
+dir = "10_bits"
+description = "Write: set, clear, toggle and test bit flags."
+hint = """
+set: `flags | flag`; clear: `flags & ~flag`; toggle: `flags ^ flag`;
+has_all: `(flags & mask) == mask`. describe: print "none" for 0,
+otherwise test each style bit in order and print its name, with a space
+before every name except the first.
+"""
+expected_stdout = """
+none
+bold
+bold underline
+bold italic underline
+italic underline
+underline
+has bold+italic: no
+"""
+
+[[exercises]]
+name = "bits3"
+dir = "10_bits"
+description = "Write: pack, unpack, popcount, power of two."
+hint = """
+pack: `((uint32_t)r << 16) | ((uint32_t)g << 8) | b`.
+get_byte: `(value >> (8 * index)) & 0xFF`.
+popcount: `while (value) { value &= value - 1; count++; }`.
+is_power_of_two: `value != 0 && (value & (value - 1)) == 0`.
+"""
+expected_stdout = """
+packed = 0x11aa33
+byte 0 = 0x33
+byte 1 = 0xaa
+byte 2 = 0x11
+popcount(0) = 0
+popcount(0xff) = 8
+popcount(0x11aa33) = 10
+is_power_of_two(64) = yes
+is_power_of_two(96) = no
+is_power_of_two(0) = no
+"""
+
+[[exercises]]
+name = "bits4"
+dir = "10_bits"
+description = "Fix: undefined shifts and promotions."
+hint = """
+1. `1 << 31` on int: use `1u << 31` and an unsigned variable.
+2. `1 << 40` is shifted as an int: `(uint64_t)1 << 40`.
+3. `~byte` promotes to int and gives -16 (0xfffffff0); cast the result
+   back: `(uint8_t)~byte`.
+4. low_bits(32) shifts by the full width. Handle n >= 32 explicitly by
+   returning UINT32_MAX.
+"""
+expected_stdout = """
+top bit: 0x80000000
+bit 40: 0x10000000000
+inverted byte: 0xf0
+low 3 bits of 0xff: 0x7
+"""
+
+[[exercises]]
+name = "bits5"
+dir = "10_bits"
+description = "Write: binary printing, bit reversal, trailing zeros."
+hint = """
+print_binary8: `for (int i = 7; i >= 0; i--) putchar((value >> i) & 1 ?
+'1' : '0');`.
+reverse_bits8: `result = (result << 1) | (value & 1); value >>= 1;`
+eight times (cast the result to uint8_t).
+trailing_zeros: return 32 for 0; otherwise count while `(value & 1) == 0`
+shifting right.
+"""
+expected_stdout = """
+0xa5 = 10100101
+reversed = 10100101
+0x1e = 00011110
+reversed = 01111000
+trailing_zeros(0x1e) = 1
+trailing_zeros(0x80) = 7
+trailing_zeros(0) = 32
+"""
+
+# ---------------------------------------------------------------------------
+# 11_memory
 # ---------------------------------------------------------------------------
 
 [[exercises]]
 name = "memory1"
-dir = "10_memory"
-description = "malloc and free."
+dir = "11_memory"
+description = "Fix: malloc takes bytes, free gives them back."
 hint = """
-`count` ints take `count * sizeof(int)` bytes. At the end, call
-`free(squares);`."""
+`malloc(count * sizeof *squares)` (or `count * sizeof(int)`), and
+`free(squares);` after the last use.
+"""
 expected_stdout = """
 Squares: 0 1 4 9 16
 """
 
 [[exercises]]
 name = "memory2"
-dir = "10_memory"
-description = "Growing an array with realloc."
+dir = "11_memory"
+description = "Write: a growable array with realloc."
 hint = """
-Start with a capacity of 2 when the current capacity is 0, otherwise double
-it: `v->capacity == 0 ? 2 : v->capacity * 2`. Pass
-`new_capacity * sizeof(int)` bytes to realloc."""
+push: `if (v->len == v->capacity) { size_t new_cap = v->capacity ? v->
+capacity * 2 : 4; int *bigger = realloc(v->data, new_cap * sizeof
+*bigger); if (!bigger) return false; v->data = bigger; v->capacity =
+new_cap; } v->data[v->len++] = value; return true;`.
+vec_free: free(v->data) and set data to NULL, len and capacity to 0.
+"""
 expected_stdout = """
 Stored 10 numbers, capacity grew to 16
 Last number: 90
@@ -500,27 +1271,800 @@ Last number: 90
 
 [[exercises]]
 name = "memory3"
-dir = "10_memory"
-description = "Never return a pointer to a local."
+dir = "11_memory"
+description = "Fix: returning a pointer to a local."
 hint = """
-Replace `char buffer[64];` with `char *buffer = malloc(64);` (check for
-NULL), write into it with snprintf, and return it. In main, `free(greeting)`
-after printing."""
+`size_t size = strlen("hello, ") + strlen(name) + 1; char *buffer =
+malloc(size); if (!buffer) return NULL; snprintf(buffer, size, "hello,
+%s", name); return buffer;` and in main `free(greeting);` after
+printing.
+"""
 expected_stdout = """
 Greeting: hello, Ada
 """
 
+[[exercises]]
+name = "memory4"
+dir = "11_memory"
+description = "Fix: use after free and double free."
+hint = """
+Move the `free(numbers);` after the last read of the array (after the
+two printfs) and delete the second free.
+"""
+expected_stdout = """
+total: 15
+first: 1
+"""
+
+[[exercises]]
+name = "memory5"
+dir = "11_memory"
+description = "Fix: leaks on error paths, goto cleanup."
+hint = """
+Declare `char *input = NULL; char *output = NULL; int result = 0;` at
+the top. Each failure sets result and does `goto cleanup;` (the
+`size < 0` check can still return directly, nothing is allocated yet).
+At the end: `cleanup: free(output); free(input); return result;`.
+"""
+skip_check_unsolved = true
+expected_stdout = """
+process(3) = 0
+process(-1) = -1
+process(100) = -2
+"""
+
+[[exercises]]
+name = "memory6"
+dir = "11_memory"
+description = "Write: calloc and two 2D layouts."
+hint = """
+grid_new: malloc the struct, then `g->cells = calloc(rows * cols, sizeof
+*g->cells)`; on failure free the struct and return NULL.
+grid_at: `return &g->cells[r * g->cols + c];`.
+grid_free: free cells, then the struct.
+matrix_new: `int **m = malloc(rows * sizeof *m)`; for each row
+`m[r] = calloc(cols, sizeof *m[r])`; if a row fails, call
+`matrix_free(m, r)` (frees the r rows allocated so far) and return NULL.
+matrix_free: free each row, then m.
+"""
+expected_stdout = """
+grid 3x4:
+0 0 0 0
+0 0 7 0
+0 0 0 0
+matrix 2x3:
+0 1 2
+10 11 12
+"""
+
+[[exercises]]
+name = "memory7"
+dir = "11_memory"
+description = "Write: strdup and a two-pass join."
+hint = """
+my_strdup: `size_t n = strlen(s) + 1; char *c = malloc(n); if (c)
+memcpy(c, s, n); return c;`.
+join: pass 1 adds strlen of every part plus strlen(sep) between parts,
+plus 1. malloc that. Pass 2 memcpy each part and separator, advancing a
+write pointer, then write the '\\0'.
+"""
+expected_stdout = """
+copy: clings (same memory: no)
+joined: usr/local/bin
+joined: alpha, beta
+joined: ''
+"""
+
+[[exercises]]
+name = "memory8"
+dir = "11_memory"
+description = "Write: an owning struct with create/destroy."
+hint = """
+person_create: malloc the struct; copy the name (malloc strlen + 1 and
+memcpy); if the copy fails, free the struct and return NULL.
+person_rename: make the copy first; only if it succeeds free the old
+name and store the new one.
+person_destroy: free the name, then the struct. Accept NULL.
+"""
+expected_stdout = """
+Ada (36)
+buffer is now: Bob
+still: Ada (36)
+renamed: Ada Lovelace (36)
+"""
+
+[[exercises]]
+name = "memory9"
+dir = "11_memory"
+description = "Fix: three malloc sizing mistakes."
+hint = """
+`malloc(strlen(text) + 1)`, `malloc(sizeof *pt)`, and
+`malloc(n * sizeof *values)`.
+"""
+expected_stdout = """
+copy: sanitizers are great
+point: (3, 4)
+sum: 45
+"""
+
 # ---------------------------------------------------------------------------
-# 11_macros
+# 12_function_pointers
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "fnptr1"
+dir = "12_function_pointers"
+description = "Fix: declaring a function pointer."
+hint = """
+`int (*op)(int, int);` with the parentheses, and
+`typedef int (*binary_op)(int, int);` above pick.
+"""
+expected_stdout = """
+2 + 3 = 5
+2 * 3 = 6
+picked: 5
+"""
+
+[[exercises]]
+name = "fnptr2"
+dir = "12_function_pointers"
+description = "Write: qsort comparators."
+hint = """
+by_int: `int x = *(const int *)a, y = *(const int *)b; return (x > y) -
+(x < y);`.
+by_length_then_alpha: the elements are `const char *`, so
+`const char *x = *(const char *const *)a;`. Compare strlen first; if
+equal, `return strcmp(x, y);`.
+by_salary_desc: `const struct employee *x = a, *y = b;` and compare
+y->salary against x->salary (swapped for descending).
+"""
+expected_stdout = """
+ints: -3 1 4 9 15
+names: Bo Ada Zed Carl Grace
+employees: Grace 95000, Ada 90000, Bo 70000
+"""
+
+[[exercises]]
+name = "fnptr3"
+dir = "12_function_pointers"
+description = "Write: map, count_if, reduce."
+hint = """
+Define `static int square(int x)`, `static bool is_odd(int x)`,
+`static int add(int a, int b)`, `static int max2(int a, int b)` above
+main. map: `a[i] = f(a[i])`. count_if: count where `p(a[i])`. reduce:
+`int acc = init; for (...) acc = f(acc, a[i]); return acc;`.
+"""
+expected_stdout = """
+squared: 1 4 9 16 25
+odd count: 3
+sum: 55
+max: 25
+"""
+
+[[exercises]]
+name = "fnptr4"
+dir = "12_function_pointers"
+description = "Write: a dispatch table."
+hint = """
+Four static functions, then `{"add", add}, {"sub", sub}, {"mul", mul},
+{"div", div_}` in the table (drop the {NULL, NULL} row or keep it and
+stop at it). run: loop over the table, `strcmp(commands[i].name, name)
+== 0`, then `printf("%s %d %d = %d\\n", name, a, b, commands[i].run(a,
+b));` and return. After the loop print the unknown-command line.
+"""
+expected_stdout = """
+add 7 3 = 10
+sub 7 3 = 4
+mul 7 3 = 21
+div 7 3 = 2
+error: division by zero
+div 7 0 = 0
+unknown command: pow
+"""
+
+[[exercises]]
+name = "fnptr5"
+dir = "12_function_pointers"
+description = "Write: callbacks with a context pointer."
+hint = """
+for_each: `for (size_t i = 0; i < n; i++) f(a[i], ctx);`.
+accumulate: `struct stats *st = ctx;` then update sum, min, max.
+print_indexed: `int *index = ctx; printf("[%d] %d\\n", *index, value);
+(*index)++;`.
+"""
+expected_stdout = """
+[0] 4
+[1] -2
+[2] 9
+[3] 1
+sum 12, min -2, max 9
+printed 4 values
+"""
+
+# ---------------------------------------------------------------------------
+# 13_data_structures
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "list1"
+dir = "13_data_structures"
+description = "Write: a linked list, push_front, print, free."
+hint = """
+push_front: `struct node *n = malloc(sizeof *n); if (!n) return false;
+n->value = value; n->next = *head; *head = n; return true;`.
+print: "(empty)" for NULL; otherwise walk with `for (n = head; n; n =
+n->next)` printing the value and " -> " when n->next is not NULL.
+free_list: `while (head) { struct node *next = head->next; free(head);
+head = next; }`.
+"""
+expected_stdout = """
+(empty)
+3 -> 2 -> 1
+"""
+
+[[exercises]]
+name = "list2"
+dir = "13_data_structures"
+description = "Write: push_back, length, contains, remove."
+hint = """
+push_back: allocate the node with next = NULL, then walk `struct node
+**pp = head; while (*pp) pp = &(*pp)->next; *pp = n;`.
+remove_first: `struct node **pp = head; while (*pp && (*pp)->value !=
+value) pp = &(*pp)->next; if (!*pp) return false; struct node *d = *pp;
+*pp = d->next; free(d); return true;`.
+"""
+expected_stdout = """
+10 -> 20 -> 30 -> 40
+length 4
+contains 30: yes
+contains 35: no
+removed 10: yes
+removed 30: yes
+removed 99: no
+20 -> 40
+length 2
+"""
+
+[[exercises]]
+name = "list3"
+dir = "13_data_structures"
+description = "Write: reverse and insert_sorted."
+hint = """
+reverse: `struct node *prev = NULL, *cur = head; while (cur) { struct
+node *next = cur->next; cur->next = prev; prev = cur; cur = next; }
+return prev;`.
+insert_sorted: allocate n; `struct node **pp = head; while (*pp &&
+(*pp)->value < value) pp = &(*pp)->next; n->next = *pp; *pp = n;`.
+"""
+expected_stdout = """
+5 -> 1 -> 9 -> 3
+reversed: 3 -> 9 -> 1 -> 5
+sorted: 1 -> 3 -> 4 -> 5 -> 9
+with 0 and 10: 0 -> 1 -> 3 -> 4 -> 5 -> 9 -> 10
+"""
+
+[[exercises]]
+name = "stack1"
+dir = "13_data_structures"
+description = "Write: a stack and bracket matching."
+hint = """
+stack_push is memory2's push with chars. stack_pop: `if (s->len == 0)
+return false; *out = s->items[--s->len]; return true;`.
+balanced: for each char, push openers; for a closer, pop (fail if
+empty) and check it is the matching opener; after the loop the stack
+must be empty. Call stack_free before every return.
+"""
+expected_stdout = """
+"{[()]}" balanced: yes
+"([)]" balanced: no
+"((" balanced: no
+"" balanced: yes
+"a(b)c[d]{e}" balanced: yes
+"""
+
+[[exercises]]
+name = "queue1"
+dir = "13_data_structures"
+description = "Write: a ring-buffer queue."
+hint = """
+is_empty: count == 0. is_full: count == CAPACITY.
+enqueue: `q->items[(q->head + q->count) % CAPACITY] = value; q->count++`.
+dequeue: `*out = q->items[q->head]; q->head = (q->head + 1) % CAPACITY;
+q->count--`.
+"""
+expected_stdout = """
+enqueued 1 2 3 4
+full: yes
+dequeued 1 2
+enqueued 5 6
+dequeued 3 4 5 6
+empty: yes
+"""
+
+[[exercises]]
+name = "tree1"
+dir = "13_data_structures"
+description = "Write: a binary search tree."
+hint = """
+insert: `if (*root == NULL) { allocate, set value, children NULL, *root
+= n; return true; }` then `if (value < (*root)->value) return
+insert(&(*root)->left, value); if (value > ...) return insert(&(*root)->
+right, value); return true;` (duplicate: nothing to do).
+inorder: left, print, right. height: 0 for NULL, else 1 + max of the
+children. tree_free: free children first, then the node.
+"""
+expected_stdout = """
+inorder: 1 3 4 6 7 8 10 13 14
+height: 4
+contains 6: yes
+contains 5: no
+"""
+
+[[exercises]]
+name = "hashmap1"
+dir = "13_data_structures"
+description = "Write: a chained hash map with string keys."
+hint = """
+hash_string: `unsigned long h = 5381; for each char c: h = h * 33 +
+(unsigned char)c;`.
+A helper that returns `struct entry **` for a key makes everything
+short: start at `&m->buckets[hash % BUCKETS]`, walk while the entry
+exists and strcmp differs. put: if *pp exists update the value, else
+allocate an entry and a copy of the key, link it at *pp, count++.
+get: `*pp ? &(*pp)->value : NULL`. remove: unlink `*pp = e->next`, free
+key and entry, count--. map_free: walk each bucket's list.
+"""
+expected_stdout = """
+apple -> 3
+pear -> 5
+plum -> (none)
+apple -> 4
+removed pear: yes
+removed pear: no
+pear -> (none)
+count: 1
+"""
+
+# ---------------------------------------------------------------------------
+# 14_preprocessor
 # ---------------------------------------------------------------------------
 
 [[exercises]]
 name = "macros1"
-dir = "11_macros"
-description = "Parenthesize macro arguments."
+dir = "14_preprocessor"
+description = "Fix: parenthesize macro arguments."
 hint = """
-Wrap the parameter and the whole expansion in parentheses:
-`#define SQUARE(x) ((x) * (x))`."""
+`#define SQUARE(x) ((x) * (x))`: parentheses around each use of x and
+around the whole expansion.
+"""
 expected_stdout = """
 SQUARE(2 + 3) = 25
+100 / SQUARE(5) = 4
+"""
+
+[[exercises]]
+name = "macros2"
+dir = "14_preprocessor"
+description = "Fix: multi-statement macros and side effects."
+hint = """
+SWAP: `#define SWAP(x, y) do { tmp = x; x = y; y = tmp; } while (0)`
+(use backslashes to continue the line if you split it).
+MAX: do the increment in its own statement before the macro call:
+`i++; int m = MAX(i, 10);`.
+"""
+expected_stdout = """
+after swap: a = 5, b = 2
+unchanged: c = 1, d = 9
+max = 10, i = 4
+"""
+
+[[exercises]]
+name = "macros3"
+dir = "14_preprocessor"
+description = "Write: stringify, ARRAY_LEN, CHECK."
+hint = """
+`#define ARRAY_LEN(a) (sizeof(a) / sizeof((a)[0]))`
+`#define SHOW(e) printf(#e " = %d\\n", (e))`
+`#define CHECK(c) do { if (c) printf("ok: " #c "\\n"); else
+printf("FAIL: " #c "\\n"); } while (0)`
+"""
+expected_stdout = """
+values has 4 elements
+a + b = 7
+values[2] * 2 = 60
+ok: a < b
+FAIL: a == b
+ok: ARRAY_LEN(values) == 4
+"""
+
+[[exercises]]
+name = "macros4"
+dir = "14_preprocessor"
+description = "Fix: an include guard in a header."
+hint = """
+In shapes.h, put `#ifndef SHAPES_H` and `#define SHAPES_H` at the top
+and `#endif` at the bottom (or `#pragma once` at the top). Save the
+header, then press `r` in watch mode if it does not re-check by
+itself.
+"""
+extra_sources = ["draw.c", "draw.h", "shapes.h"]
+expected_stdout = """
+area: 6
+###
+###
+"""
+
+[[exercises]]
+name = "macros5"
+dir = "14_preprocessor"
+description = "Fix: headers, extern and static linkage."
+hint = """
+Add `#include "counter.h"`. `add_to_total` and `total` are static in
+counter.c and cannot be reached from here. Reset through the interface:
+`counter_bump(-counter_value());` (which also counts as a bump, hence
+bumps: 3).
+"""
+extra_sources = ["counter.c", "counter.h"]
+expected_stdout = """
+value: 30
+bumps: 2
+value after reset: 0
+bumps: 3
+"""
+
+[[exercises]]
+name = "macros6"
+dir = "14_preprocessor"
+description = "Write: conditional compilation and -D flags."
+hint = """
+Top of file:
+`#ifndef LOG_LEVEL / #define LOG_LEVEL 1 / #endif`, then
+`#if LOG_LEVEL > 3 / #error "..." / #endif`.
+Define log_info under `#if LOG_LEVEL >= 1` as a do/while(0) that
+printfs "[info] " followed by __VA_ARGS__ and a newline, with an
+`#else` branch `#define log_info(...) ((void)0)`. Same for log_debug at
+level 2. Wrap the two color printfs in `#ifdef FEATURE_COLOR ...
+#endif`.
+"""
+required_flags = ["-DFEATURE_COLOR", "-DLOG_LEVEL=2"]
+expected_stdout = """
+[info] starting
+[debug] log level is 2
+[color]Hello[/color]
+[info] done
+"""
+
+# ---------------------------------------------------------------------------
+# 15_io
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "io1"
+dir = "15_io"
+description = "Write: argc and argv."
+hint = """
+`printf("%d arguments\\n", argc - 1);` then loop i from 1 to argc-1
+printing "[%d] %s". `int first = 1; if (argc > 1 && strcmp(argv[1],
+"-v") == 0) { print verbose on; first = 2; } else print off;` then loop
+from `first` printing "positional: %s".
+"""
+args = ["-v", "alpha", "beta", "gamma"]
+expected_stdout = """
+4 arguments
+[1] -v
+[2] alpha
+[3] beta
+[4] gamma
+verbose: on
+positional: alpha
+positional: beta
+positional: gamma
+"""
+
+[[exercises]]
+name = "io2"
+dir = "15_io"
+description = "Write: stderr and exit codes."
+hint = """
+Write a parse_int with strtol (see strings8). Loop over argv[1..]; on
+success add to sum, otherwise `fprintf(stderr, "invalid number: %s\\n",
+argv[i]); invalid++;`. Print the sum with printf and `return invalid;`.
+"""
+args = ["7", "6", "x", "5"]
+expected_exit = 1
+expected_stdout = """
+sum of valid arguments: 18
+"""
+
+[[exercises]]
+name = "io3"
+dir = "15_io"
+description = "Write: reading stdin with fgets."
+hint = """
+`char line[256]; while (fgets(line, sizeof line, stdin))`: count the
+line, add strlen(line) to chars (it includes the newline), count words
+with the in_word state machine from strings9, then strip the newline
+with `line[strcspn(line, "\\n")] = '\\0';` and compare strlen(line)
+with the longest so far (strcpy it into a second buffer when longer).
+"""
+stdin = """
+the quick brown fox...
+jumps over
+
+the lazy dog
+"""
+expected_stdout = """
+lines: 4
+words: 9
+chars: 48
+longest (22): the quick brown fox...
+"""
+
+[[exercises]]
+name = "io4"
+dir = "15_io"
+description = "Fix: scanf pitfalls."
+hint = """
+Read lines with fgets into a `char line[128]`, then
+`if (sscanf(line, "%15s %d", name, &age) == 2)` print; else strip the
+newline and print "bad line: %s". The three bugs were the missing `&`,
+the unchecked return value (a loop that never advances on bad input),
+and `%s` without a width.
+"""
+stdin = """
+Ada 36
+Grace 45
+oops
+Linus 54
+"""
+expected_stdout = """
+Ada is 36
+Grace is 45
+bad line: oops
+Linus is 54
+"""
+
+[[exercises]]
+name = "io5"
+dir = "15_io"
+description = "Write: writing and reading a file."
+hint = """
+write_numbers: `FILE *f = fopen(path, "w"); if (!f) return -1;` loop
+`fprintf(f, "%d\\n", i);` then `fclose(f); return count;`.
+sum_file: fopen with "r", return -1 if NULL; `while (fgets(line, sizeof
+line, f)) sum += strtol(line, NULL, 10);` then fclose and return sum.
+"""
+expected_stdout = """
+wrote 10 numbers
+sum: 55
+after remove: -1
+"""
+
+[[exercises]]
+name = "io6"
+dir = "15_io"
+description = "Write: errno, strerror and failing properly."
+hint = """
+count_lines: fopen; on NULL `fprintf(stderr, "%s: %s\\n", path,
+strerror(errno)); return -1;`. Otherwise count lines with fgets, fclose,
+`*out = n; return 0;`.
+main: print "counting lines in %s" with argv[1], call count_lines, and
+`return EXIT_FAILURE;` when it fails; otherwise print the count and
+return EXIT_SUCCESS.
+"""
+args = ["/nonexistent/clings/input.txt"]
+expected_exit = 1
+expected_stdout = """
+counting lines in /nonexistent/clings/input.txt
+"""
+
+# ---------------------------------------------------------------------------
+# 16_undefined_behavior
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "ub1"
+dir = "16_undefined_behavior"
+description = "Fix: uninitialized variables."
+hint = """
+`int total = 0;` and `int largest = values[0];` (or INT_MIN from
+<limits.h>).
+"""
+required_flags = ["-ftrivial-auto-var-init=pattern"]
+expected_stdout = """
+total: 60
+largest: 30
+"""
+
+[[exercises]]
+name = "ub2"
+dir = "16_undefined_behavior"
+description = "Fix: signed integer overflow."
+hint = """
+Make factorial return `unsigned long long` and compute in that type.
+Before `result *= i`, check `if (result > ULLONG_MAX / i) return 0;`.
+Update the printf formats in main to %llu.
+"""
+expected_stdout = """
+12! = 479001600
+20! = 2432902008176640000
+21! does not fit
+"""
+
+[[exercises]]
+name = "ub3"
+dir = "16_undefined_behavior"
+description = "Fix: sequence points and division."
+hint = """
+`i = i + 1;` (or just `i++;`). In the loop: `a[k] = k; k++;` as two
+statements. safe_div: `if (b == 0 || (a == INT_MIN && b == -1)) return
+0;` before dividing.
+"""
+expected_stdout = """
+i = 4
+a = 0 1 2
+7 / 2 = 3
+-7 / 2 = -3
+1 / 0 = 0
+INT_MIN / -1 = 0
+"""
+
+[[exercises]]
+name = "ub4"
+dir = "16_undefined_behavior"
+description = "Fix: misaligned access and type punning."
+hint = """
+read_u32_at: `uint32_t v; memcpy(&v, buf + offset, sizeof v); return v;`.
+read_u16_be: `((unsigned)buf[offset] << 8) | buf[offset + 1]`, cast to
+uint16_t.
+"""
+expected_stdout = """
+u32 at 1: 0x4030201
+u16 be at 5: 0xabcd
+u16 be at 0: 0x1
+"""
+
+[[exercises]]
+name = "ub5"
+dir = "16_undefined_behavior"
+description = "Fix: five classic bugs in one file."
+hint = """
+1. `i < 5` in squares. 2. Move `free(v)` after the printf. 3. Return
+UINT32_MAX when bits >= 32. 4. `malloc(strlen(src) + 1)`. 5. `return s
+== NULL ? 0 : strlen(s);`.
+"""
+expected_stdout = """
+squares: 0 1 4 9 16
+doubled: 2 4 6
+mask: 0xffffffff
+copy: sanitize
+length of NULL: 0
+"""
+
+# ---------------------------------------------------------------------------
+# 17_projects
+# ---------------------------------------------------------------------------
+
+[[exercises]]
+name = "project1"
+dir = "17_projects"
+description = "Project: word frequency counter."
+hint = """
+Read lines with fgets. For each line keep a `const char *cursor` and
+call a next_word function that skips non-alnum characters, copies
+alnum characters lower-cased into a buffer, and stops. Bump the word in
+a growable array of {char *word; int count;}: linear search with
+strcmp, append a malloc'd copy with count 1 if not found. After the
+input: qsort with a comparator that orders by count descending, then
+strcmp. Print the first N and the distinct count. Free every word and
+the array.
+"""
+args = ["5"]
+stdin = """
+The quick brown fox jumps over the lazy dog.
+The dog sleeps; the FOX does not!
+"""
+expected_stdout = """
+the: 4
+dog: 2
+fox: 2
+brown: 1
+does: 1
+(11 distinct words)
+"""
+
+[[exercises]]
+name = "project2"
+dir = "17_projects"
+description = "Project: a string builder with appendf."
+hint = """
+strbuf_reserve(sb, extra): needed = len + extra + 1; if needed > cap,
+double cap (starting at 16) until it fits, realloc, and if the buffer
+was empty before, write data[0] = '\\0'.
+append: reserve(strlen(text)), memcpy including the terminator, len +=
+n. appendf: va_start; n = vsnprintf(NULL, 0, fmt, args); va_end;
+reserve(n); va_start again; vsnprintf(data + len, n + 1, fmt, args);
+va_end; len += n. clear: len = 0 and data[0] = '\\0' if data exists.
+free: free(data) and re-init.
+"""
+expected_stdout = """
+[hello, world]
+[hello, world! 3 + 4 = 7, pi ~ 3.14]
+length 34, capacity >= 35: yes
+[after clear]
+"""
+
+[[exercises]]
+name = "project3"
+dir = "17_projects"
+description = "Project: an RPN calculator."
+hint = """
+Tokenize each line with strtok(line, " \\t\\n"). Try strtod first
+(valid when end != tok and *end == '\\0'); push. Otherwise the token
+must be exactly one of + - * /; pop b then a (underflow if either pop
+fails), compute (division by zero check), push. After the loop: no
+tokens -> "empty"; more than one value -> "too many values"; otherwise
+the single value is the result, printed with %g. Count failures and
+return 1 if any. For "unknown token" you need the token text: either
+copy it into a small buffer before the strtok state moves on, or keep an
+untouched copy of the line.
+"""
+stdin = """
+3 4 +
+5 1 2 + 4 * + 3 -
+5 2 /
+1 +
+1 0 /
+1 x +
+1 2
+
+2 5 -
+"""
+expected_exit = 1
+expected_stdout = """
+7
+14
+2.5
+error: stack underflow
+error: division by zero
+error: unknown token: x
+error: too many values
+error: empty
+-3
+"""
+
+[[exercises]]
+name = "project4"
+dir = "17_projects"
+description = "Project: a tiny records database."
+hint = """
+db_add_line: strip the newline, strtok three fields on ",", reject if
+any is missing or a fourth exists, strtol the salary with end checks,
+duplicate name and dept with malloc+memcpy, push the record (growable
+array as in memory2).
+db_filter: walk the rows, copying kept rows down to index `kept` and
+freeing the others; set len = kept.
+Comparators: by_name is strcmp on names; by_dept compares dept then
+name; by_salary orders descending then by name. A small table
+{field, comparator} picks the one named in argv.
+main: read stdin (skip lines that are only whitespace, report others
+that fail to parse to stderr), then walk argv: "sort" and "filter"
+consume the next argument; "print" uses `printf("%-8s %-12s %7ld\\n",
+...)`; "total" sums salaries. Free everything at the end.
+"""
+args = ["sort", "salary", "filter", "eng", "print", "total"]
+stdin = """
+ada,eng,105000
+bo,sales,70000
+
+grace,eng,120000
+bad line
+linus,eng,98000
+mei,sales,82000
+"""
+expected_stdout = """
+grace    eng           120000
+ada      eng           105000
+linus    eng            98000
+total: 323000
 """

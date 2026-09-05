@@ -1,10 +1,4 @@
-// types4.c
-//
-// Before C23, `bool`, `true` and `false` are not built into the language.
-// They come from a standard header. This exercise is compiled as C17, so
-// include the right header to make it work. Expected output:
-//
-//     Ready!
+// types4.c - solution
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -12,9 +6,11 @@
 int main(void)
 {
     bool ready = true;
+    bool big = 42;
 
     if (ready) {
         printf("Ready!\n");
     }
+    printf("42 stored in a bool is %d\n", big);
     return 0;
 }

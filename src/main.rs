@@ -74,16 +74,18 @@ fn run() -> Result<ExitCode> {
         }
         Some(Subcommands::Run { name }) => cmd_run(&mut app, name.as_deref()),
         Some(Subcommands::CheckAll) => cmd_check_all(&mut app),
-        Some(Subcommands::Reset { all: true, yes, .. }) => cmd_reset_all(&mut app, yes),
-        Some(Subcommands::Reset { name, .. }) => {
-            let idx = app.resolve(name.as_deref())?;
-            app.reset(idx)?;
-            println!(
-                "The exercise {} has been reset to its original state.",
-                term::bold(&app.exercises[idx].display_name())
-            );
-            Ok(ExitCode::SUCCESS)
-        }
+        Some(Subcommands::Reset {
+            all: true,
+            keep_file,
+            yes,
+            ..
+        }) => cmd_reset_all(&mut app, keep_file, yes),
+        Some(Subcommands::Reset {
+            name,
+            keep_file,
+            yes,
+            ..
+        }) => cmd_reset(&mut app, name.as_deref(), keep_file, yes),
         Some(Subcommands::Hint { name }) => {
             let idx = app.resolve(name.as_deref())?;
             let ex = &app.exercises[idx];
@@ -154,27 +156,93 @@ fn cmd_run(app: &mut AppState, name: Option<&str>) -> Result<ExitCode> {
     Ok(ExitCode::SUCCESS)
 }
 
-fn cmd_reset_all(app: &mut AppState, yes: bool) -> Result<ExitCode> {
-    if !yes {
-        print!(
-            "{} This overwrites every exercise file and erases your progress ({}/{} done). Continue? [y/N] ",
-            term::yellow("Warning:"),
+/// Asks a yes/no question on the terminal. Returns `true` for yes.
+fn confirm(question: &str) -> Result<bool> {
+    print!("{} {question} [y/N] ", term::yellow("Warning:"));
+    io::stdout().flush()?;
+    let mut answer = String::new();
+    io::stdin().read_line(&mut answer)?;
+    Ok(matches!(answer.trim(), "y" | "Y" | "yes"))
+}
+
+fn cmd_reset_all(app: &mut AppState, keep_file: bool, yes: bool) -> Result<ExitCode> {
+    let question = if keep_file {
+        format!(
+            "This forgets all your progress ({}/{} done) but keeps the files. Continue?",
             app.n_done(),
             app.exercises.len()
+        )
+    } else {
+        format!(
+            "This overwrites every exercise file and erases your progress ({}/{} done). Continue?",
+            app.n_done(),
+            app.exercises.len()
+        )
+    };
+    if !yes && !confirm(&question)? {
+        println!("Nothing was changed.");
+        return Ok(ExitCode::FAILURE);
+    }
+    app.reset_all(keep_file)?;
+    println!(
+        "All {} exercises are pending again{}. Current exercise is {}. Run `clings` to start over.",
+        app.exercises.len(),
+        if keep_file {
+            ""
+        } else {
+            " and restored to their original state"
+        },
+        term::bold(&app.current().display_name())
+    );
+    Ok(ExitCode::SUCCESS)
+}
+
+fn cmd_reset(
+    app: &mut AppState,
+    name: Option<&str>,
+    keep_file: bool,
+    yes: bool,
+) -> Result<ExitCode> {
+    let idxs = match name {
+        None => vec![app.current_idx()],
+        Some(name) => app.resolve_many(name)?,
+    };
+    if idxs.len() > 1 && !yes {
+        let what = if keep_file {
+            "forget the progress of"
+        } else {
+            "overwrite the files of and forget the progress of"
+        };
+        let question = format!(
+            "This will {what} {} exercises in `{}`. Continue?",
+            idxs.len(),
+            name.unwrap_or_default()
         );
-        io::stdout().flush()?;
-        let mut answer = String::new();
-        io::stdin().read_line(&mut answer)?;
-        if !matches!(answer.trim(), "y" | "Y" | "yes") {
+        if !confirm(&question)? {
             println!("Nothing was changed.");
             return Ok(ExitCode::FAILURE);
         }
     }
-    app.reset_all()?;
+    for &idx in &idxs {
+        app.reset(idx, keep_file)?;
+        println!(
+            "{} {}{}",
+            term::green("reset"),
+            app.exercises[idx].display_name(),
+            if keep_file {
+                " (progress forgotten, file kept)"
+            } else {
+                " (restored to its original state)"
+            }
+        );
+    }
+    // Make the first reset exercise current so `clings` picks it up next.
+    let first = idxs[0];
+    app.set_current_idx(first)?;
     println!(
-        "All {} exercises have been reset to their original state. Current exercise is {}.",
-        app.exercises.len(),
-        term::bold(&app.current().display_name())
+        "\nCurrent exercise is now {} ({}). Run `clings` to redo it.",
+        term::bold(&app.exercises[first].display_name()),
+        app.exercises[first].path.display()
     );
     Ok(ExitCode::SUCCESS)
 }

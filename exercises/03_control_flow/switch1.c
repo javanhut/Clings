@@ -1,12 +1,25 @@
 // switch1.c
 //
-// In a `switch`, execution keeps "falling through" from one `case` into
-// the next until it hits a `break`. This program is supposed to print only
-// the name of day 3:
+// CONCEPT
+// `switch (value)` jumps to the `case` label matching the value (which
+// must be an integer constant: numbers, characters, enum values) and then
+// keeps executing *downwards* through the following cases until it hits a
+// `break` or the end of the switch. This "fallthrough" is deliberate,
+// occasionally useful, and the source of endless bugs when a `break` is
+// forgotten. `default:` runs when nothing matches.
 //
+// WHEN YOU USE THIS
+// Dispatching on an enum or a command character, state machines, byte
+// code interpreters. A switch over an enum has a bonus: with -Wall the
+// compiler warns if you forget a value (as long as there is no `default`,
+// which would silence it).
+//
+// TASK
+// The program should print only the name of day 3 but prints several
+// lines. Fix it.
+//
+// EXPECTED OUTPUT
 //     Wednesday
-//
-// but it prints several lines. Fix it.
 
 #include <stdio.h>
 

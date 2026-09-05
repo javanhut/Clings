@@ -1,10 +1,4 @@
-// structs2.c
-//
-// When you have a *pointer* to a struct, you access its members with `->`
-// instead of `.` (`p->x` is shorthand for `(*p).x`). Fix `move` so the
-// program prints:
-//
-//     Point moved to (3, 4)
+// structs2.c - solution
 
 #include <stdio.h>
 
@@ -24,7 +18,6 @@ int main(void)
     struct point pt = {1, 1};
 
     move(&pt, 2, 3);
-
     printf("Point moved to (%d, %d)\n", pt.x, pt.y);
     return 0;
 }

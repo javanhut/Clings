@@ -1,20 +1,14 @@
-// types3.c
-//
-// Every integer type has a limited range. An `unsigned char` can only hold
-// values from 0 to 255; adding beyond that silently wraps around to 0.
-//
-// Pick a type for `value` that can hold the result, so the program prints:
-//
-//     value is 260
+// types3.c - solution
 
+#include <limits.h>
 #include <stdio.h>
 
 int main(void)
 {
     int value = 250;
 
-    value += 10;
-
+    value = value + 10;
     printf("value is %d\n", value);
+    printf("an int goes up to %d\n", INT_MAX);
     return 0;
 }

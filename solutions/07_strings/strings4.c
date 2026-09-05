@@ -1,10 +1,4 @@
-// strings4.c
-//
-// This function should count the vowels in a string, but its condition is
-// wrong: in C, `c == 'a' || 'e'` means `(c == 'a') || ('e')`, and 'e' on
-// its own is always true. Fix the condition so the program prints:
-//
-//     programming has 3 vowels
+// strings4.c - solution
 
 #include <stdio.h>
 

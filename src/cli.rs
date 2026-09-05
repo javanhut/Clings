@@ -35,16 +35,21 @@ pub enum Subcommands {
     },
     /// Check every exercise, marking each as done or pending.
     CheckAll,
-    /// Restore an exercise to its original state. Resets the current exercise by default.
+    /// Reset exercises so you can redo them: restores the original file(s)
+    /// and forgets that they were done. Resets the current exercise by default.
     Reset {
-        /// Name of the exercise.
+        /// An exercise name (e.g. `pointers2`) or a topic directory
+        /// (e.g. `06_pointers`) to reset every exercise of that topic.
         #[arg(conflicts_with = "all")]
         name: Option<String>,
-        /// Reset every exercise and erase all progress.
+        /// Reset every exercise.
         #[arg(long)]
         all: bool,
-        /// Do not ask for confirmation before resetting everything.
-        #[arg(short, long, requires = "all")]
+        /// Only forget the progress; keep the exercise file(s) as they are.
+        #[arg(long, visible_alias = "progress-only")]
+        keep_file: bool,
+        /// Do not ask for confirmation when resetting several exercises.
+        #[arg(short, long)]
         yes: bool,
     },
     /// Show a hint for an exercise. Shows the hint for the current exercise by default.
@@ -52,9 +57,9 @@ pub enum Subcommands {
         /// Name of the exercise.
         name: Option<String>,
     },
-    /// List every exercise with its status.
+    /// List all exercises and their status.
     List,
-    /// Commands for developing new exercises.
+    /// Commands for people writing exercises.
     #[command(subcommand)]
     Dev(DevCommands),
 }

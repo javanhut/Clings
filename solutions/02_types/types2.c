@@ -1,21 +1,14 @@
-// types2.c
-//
-// A `char` is just a small integer. The character 'A' has the code 65,
-// 'B' is 66, and so on, so you can do arithmetic on characters.
-//
-// Replace `???` with an expression that uses `c` (not the literal 'C')
-// to make `c` the letter two places after 'A'. The program should print:
-//
-//     C has code 67
+// types2.c - solution
 
 #include <stdio.h>
 
 int main(void)
 {
     char c = 'A';
+    char later = c + 2;
+    char digit = '7';
 
-    c = c + 2;
-
-    printf("%c has code %d\n", c, c);
+    printf("%c has code %d\n", later, later);
+    printf("digit '%c' has value %d\n", digit, digit - '0');
     return 0;
 }

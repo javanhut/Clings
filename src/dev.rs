@@ -15,7 +15,17 @@ pub fn run(cmd: DevCommands) -> Result<ExitCode> {
 
 const EXERCISE_TEMPLATE: &str = r#"// {name}.c
 //
-// TODO: describe the task here.
+// CONCEPT
+// TODO: explain the idea in a few sentences: what it is and how it works.
+//
+// WHEN YOU USE THIS
+// TODO: say where this shows up in real programs and why it matters.
+//
+// TASK
+// TODO: say exactly what to fix or write.
+//
+// EXPECTED OUTPUT
+//     Hello
 
 #include <stdio.h>
 
@@ -157,8 +167,23 @@ fn check() -> Result<ExitCode> {
     }
 
     // Warn if exercises on disk are not listed in info.toml.
-    let listed: std::collections::HashSet<_> =
+    let mut listed: std::collections::HashSet<_> =
         app.exercises.iter().map(|e| e.path.clone()).collect();
+    for ex in &app.exercises {
+        for extra in &ex.extra_sources {
+            if !extra.is_file() {
+                report(
+                    false,
+                    format!(
+                        "{}: missing support file {}",
+                        ex.display_name(),
+                        extra.display()
+                    ),
+                );
+            }
+            listed.insert(extra.clone());
+        }
+    }
     for file in walk_c_files(Path::new("exercises"))? {
         if !listed.contains(&file) {
             report(

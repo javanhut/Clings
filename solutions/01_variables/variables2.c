@@ -1,10 +1,4 @@
-// variables2.c
-//
-// A variable declared `const` cannot be changed after it is initialized.
-// This program tries to do exactly that. Fix it so that it counts to 5
-// and prints:
-//
-//     count is 5
+// variables2.c - solution
 
 #include <stdio.h>
 
@@ -15,7 +9,6 @@ int main(void)
     for (int i = 0; i < 5; i++) {
         count = count + 1;
     }
-
     printf("count is %d\n", count);
     return 0;
 }

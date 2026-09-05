@@ -1,11 +1,4 @@
-// arrays1.c
-//
-// Array indices start at 0, so an array with 5 elements has indices 0 to 4.
-// This loop reads one element past the end of the array, which is undefined
-// behavior: it prints garbage, or crashes, or appears to work by accident.
-// Fix the loop so the program prints exactly:
-//
-//     10 20 30 40 50
+// arrays1.c - solution
 
 #include <stdio.h>
 

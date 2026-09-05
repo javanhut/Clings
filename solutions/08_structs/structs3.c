@@ -1,12 +1,4 @@
-// structs3.c
-//
-// Arrays of structs are a common way to hold a list of records. Replace
-// `???` to print each item and add up the stock. Expected output:
-//
-//     apple: 10
-//     pear: 12
-//     plum: 20
-//     Total: 42
+// structs3.c - solution
 
 #include <stdio.h>
 

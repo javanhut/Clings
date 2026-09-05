@@ -23,7 +23,6 @@ run =["cargo install --path ."]
 [commands.init]
 desc = "Initializes clinglings"
 run = ["clings init", "cd clings","clings"]
-[
 [commands.run]
 desc = "Run installed clinglings"
 run = ["clings init", "cd clings","clings"]

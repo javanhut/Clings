@@ -1,13 +1,4 @@
-// enums2.c
-//
-// A common trick: put an extra name at the end of an enum to get the
-// number of values, and use the enum values as indices into an array of
-// names. Replace `???` with that extra name. Expected output:
-//
-//     0: north
-//     1: east
-//     2: south
-//     3: west
+// enums2.c - solution
 
 #include <stdio.h>
 
@@ -16,15 +7,26 @@ enum direction {
     EAST,
     SOUTH,
     WEST,
-    DIRECTION_COUNT,
+    DIRECTION_COUNT
 };
 
-const char *names[DIRECTION_COUNT] = {"north", "east", "south", "west"};
+static const char *names[DIRECTION_COUNT] = {
+    "north",
+    "east",
+    "south",
+    "west",
+};
+
+enum direction turn_right(enum direction d)
+{
+    return (d + 1) % DIRECTION_COUNT;
+}
 
 int main(void)
 {
     for (int d = 0; d < DIRECTION_COUNT; d++) {
         printf("%d: %s\n", d, names[d]);
     }
+    printf("right of west is %s\n", names[turn_right(WEST)]);
     return 0;
 }

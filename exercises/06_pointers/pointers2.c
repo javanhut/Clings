@@ -1,11 +1,27 @@
 // pointers2.c
 //
+// CONCEPT
 // Remember functions3: arguments are copied, so `swap` below swaps its own
 // copies and main never notices. Pointers are the way out: pass the
-// *addresses* of a and b, and swap the values they point to.
+// *addresses* of a and b. The function still receives copies, but copies
+// of the addresses, and through an address it can reach the original.
 //
-// Change `swap` to take pointers and update the call in main. Expected:
+//     void swap(int *a, int *b);   // "give me the addresses of two ints"
+//     swap(&x, &y);                // call with addresses
 //
+// Inside, `*a` is the caller's x. This is the single most common use of
+// pointers: a function that needs to change something that belongs to
+// its caller.
+//
+// WHEN YOU USE THIS
+// Any "output parameter": scanf("%d", &n), functions that return several
+// results, functions that update a struct owned by the caller. When you
+// see `&` in a call, you know that variable may change.
+//
+// TASK
+// Change `swap` to take pointers and update the call in main.
+//
+// EXPECTED OUTPUT
 //     a = 2, b = 1
 
 #include <stdio.h>
@@ -23,7 +39,6 @@ int main(void)
     int b = 2;
 
     swap(a, b);
-
     printf("a = %d, b = %d\n", a, b);
     return 0;
 }

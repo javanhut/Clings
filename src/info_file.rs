@@ -61,6 +61,17 @@ pub struct ExerciseInfo {
     /// Exit code the program must return. Defaults to 0.
     #[serde(default)]
     pub expected_exit: i32,
+    /// Command-line arguments passed to the program when it runs.
+    #[serde(default)]
+    pub args: Vec<String>,
+    /// Text fed to the program on standard input when it runs.
+    #[serde(default)]
+    pub stdin: String,
+    /// Support files, relative to the exercise's directory: `.c` files are
+    /// compiled and linked together with the exercise (and the solution),
+    /// `.h` files are only listed so that `clings reset` restores them.
+    #[serde(default)]
+    pub extra_sources: Vec<String>,
     /// `clings dev check` normally verifies that the unsolved exercise fails.
     /// Set this for exercises where that cannot be checked deterministically.
     #[serde(default)]
@@ -74,6 +85,21 @@ impl ExerciseInfo {
 
     pub fn solution_path(&self) -> PathBuf {
         rel_path("solutions", self.dir.as_deref(), &self.name)
+    }
+
+    /// Paths of the extra sources, resolved below `exercises/<dir>/`.
+    pub fn extra_source_paths(&self) -> Vec<PathBuf> {
+        self.extra_sources
+            .iter()
+            .map(|f| {
+                let mut p = PathBuf::from("exercises");
+                if let Some(dir) = &self.dir {
+                    p.push(dir);
+                }
+                p.push(f);
+                p
+            })
+            .collect()
     }
 }
 
@@ -153,6 +179,18 @@ impl InfoFile {
                     bail!("Exercise `{}` has an invalid dir `{dir}`", ex.name);
                 }
             }
+            for src in &ex.extra_sources {
+                if src.is_empty()
+                    || src.starts_with('/')
+                    || src.contains("..")
+                    || !(src.ends_with(".c") || src.ends_with(".h"))
+                {
+                    bail!(
+                        "Exercise `{}` has an invalid extra source `{src}`: use a plain `.c` or `.h` file name in the exercise's directory",
+                        ex.name
+                    );
+                }
+            }
             if !seen.insert(&ex.name) {
                 bail!("Duplicate exercise name `{}` in info.toml", ex.name);
             }
@@ -180,6 +218,14 @@ mod tests {
                 "solution for {} is not embedded",
                 ex.name
             );
+            for extra in ex.extra_source_paths() {
+                assert!(
+                    embedded::get(&extra.to_string_lossy()).is_some(),
+                    "extra source {} for {} is not embedded",
+                    extra.display(),
+                    ex.name
+                );
+            }
         }
     }
 
@@ -198,19 +244,39 @@ hint = ""
     }
 
     #[test]
+    fn bad_extra_sources_are_rejected() {
+        let toml = r#"
+format_version = 1
+[[exercises]]
+name = "a"
+hint = ""
+extra_sources = ["../evil.c"]
+"#;
+        assert!(InfoFile::parse_str(toml).is_err());
+    }
+
+    #[test]
     fn defaults_apply() {
         let toml = r#"
 format_version = 1
 [[exercises]]
 name = "a"
+dir = "d"
 hint = "h"
+extra_sources = ["lib.c"]
 "#;
         let info = InfoFile::parse_str(toml).unwrap();
         assert_eq!(info.default_flags, vec!["-Wall", "-Wextra"]);
         let ex = &info.exercises[0];
         assert_eq!(ex.std, CStd::C17);
         assert_eq!(ex.expected_exit, 0);
-        assert_eq!(ex.path(), PathBuf::from("exercises/a.c"));
-        assert_eq!(ex.solution_path(), PathBuf::from("solutions/a.c"));
+        assert!(ex.args.is_empty());
+        assert!(ex.stdin.is_empty());
+        assert_eq!(ex.path(), PathBuf::from("exercises/d/a.c"));
+        assert_eq!(ex.solution_path(), PathBuf::from("solutions/d/a.c"));
+        assert_eq!(
+            ex.extra_source_paths(),
+            vec![PathBuf::from("exercises/d/lib.c")]
+        );
     }
 }

@@ -1,0 +1,26 @@
+// memory4.c - solution
+
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void)
+{
+    int *numbers = malloc(5 * sizeof *numbers);
+
+    if (numbers == NULL) {
+        return 1;
+    }
+    for (int i = 0; i < 5; i++) {
+        numbers[i] = i + 1;
+    }
+
+    int total = 0;
+    for (int i = 0; i < 5; i++) {
+        total += numbers[i];
+    }
+    printf("total: %d\n", total);
+    printf("first: %d\n", numbers[0]);
+    free(numbers);
+    numbers = NULL;
+    return 0;
+}

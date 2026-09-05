@@ -20,11 +20,15 @@ pub struct Exercise {
     pub expected_stdout: String,
     pub required_flags: Vec<String>,
     pub expected_exit: i32,
+    pub args: Vec<String>,
+    pub stdin: String,
     pub skip_check_unsolved: bool,
     /// Path of the exercise source, relative to the working directory.
     pub path: PathBuf,
     /// Path of the reference solution, relative to the working directory.
     pub solution_path: PathBuf,
+    /// Support sources compiled together with the exercise and the solution.
+    pub extra_sources: Vec<PathBuf>,
     /// Absolute path of the exercise source, used to match file-watcher events.
     pub abs_path: PathBuf,
     pub done: bool,
@@ -40,6 +44,7 @@ impl Exercise {
         });
         Self {
             solution_path: info.solution_path(),
+            extra_sources: info.extra_source_paths(),
             path,
             abs_path,
             name: info.name,
@@ -50,6 +55,8 @@ impl Exercise {
             expected_stdout: info.expected_stdout,
             required_flags: info.required_flags,
             expected_exit: info.expected_exit,
+            args: info.args,
+            stdin: info.stdin,
             skip_check_unsolved: info.skip_check_unsolved,
             done,
         }
@@ -71,17 +78,29 @@ impl Exercise {
             .collect()
     }
 
+    fn spec<'a>(
+        &'a self,
+        bin_name: &'a str,
+        source: &'a PathBuf,
+        flags: &'a [String],
+    ) -> CheckSpec<'a> {
+        CheckSpec {
+            bin_name,
+            source,
+            extra_sources: &self.extra_sources,
+            std: self.std,
+            flags,
+            args: &self.args,
+            stdin: &self.stdin,
+            expected_stdout: &self.expected_stdout,
+            expected_exit: self.expected_exit,
+        }
+    }
+
     /// Compiles and runs the exercise as the learner wrote it.
     pub fn run(&self, toolchain: &Toolchain, default_flags: &[String]) -> Result<RunReport> {
         let flags = self.flags(default_flags);
-        toolchain.check(&CheckSpec {
-            bin_name: &self.name,
-            source: &self.path,
-            std: self.std,
-            flags: &flags,
-            expected_stdout: &self.expected_stdout,
-            expected_exit: self.expected_exit,
-        })
+        toolchain.check(&self.spec(&self.name, &self.path, &flags))
     }
 
     /// Compiles and runs the reference solution (used by `clings dev check`).
@@ -92,14 +111,7 @@ impl Exercise {
     ) -> Result<RunReport> {
         let flags = self.flags(default_flags);
         let bin_name = format!("{}_solution", self.name);
-        toolchain.check(&CheckSpec {
-            bin_name: &bin_name,
-            source: &self.solution_path,
-            std: self.std,
-            flags: &flags,
-            expected_stdout: &self.expected_stdout,
-            expected_exit: self.expected_exit,
-        })
+        toolchain.check(&self.spec(&bin_name, &self.solution_path, &flags))
     }
 
     /// A one-line banner printed before a run.
@@ -113,6 +125,20 @@ impl Exercise {
         if !self.description.is_empty() {
             s.push('\n');
             s.push_str(&self.description);
+        }
+        if !self.args.is_empty() {
+            s.push('\n');
+            s.push_str(&term::dim(&format!(
+                "Runs with arguments: {}",
+                self.args.join(" ")
+            )));
+        }
+        if !self.stdin.is_empty() {
+            s.push('\n');
+            s.push_str(&term::dim(&format!(
+                "Standard input is {} line(s) of text (see the exercise file).",
+                self.stdin.lines().count()
+            )));
         }
         s
     }

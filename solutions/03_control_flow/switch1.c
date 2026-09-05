@@ -1,12 +1,4 @@
-// switch1.c
-//
-// In a `switch`, execution keeps "falling through" from one `case` into
-// the next until it hits a `break`. This program is supposed to print only
-// the name of day 3:
-//
-//     Wednesday
-//
-// but it prints several lines. Fix it.
+// switch1.c - solution
 
 #include <stdio.h>
 

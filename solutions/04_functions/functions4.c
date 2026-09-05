@@ -1,17 +1,10 @@
-// functions4.c
-//
-// A recursive function calls itself. Every recursion needs a *base case*:
-// a condition under which it stops calling itself and just returns a
-// value. This factorial function has no base case, so it recurses until
-// the program crashes. Add one so the program prints:
-//
-//     5! = 120
+// functions4.c - solution
 
 #include <stdio.h>
 
 unsigned long factorial(unsigned int n)
 {
-    if (n <= 1) {
+    if (n == 0) {
         return 1;
     }
     return n * factorial(n - 1);

@@ -164,18 +164,46 @@ impl AppState {
         self.exercises[idx].run(&self.toolchain, &self.default_flags)
     }
 
-    /// Restores the exercise file to its pristine, embedded version and marks
-    /// it as not done.
-    pub fn reset(&mut self, idx: usize) -> Result<()> {
-        self.restore_file(idx)?;
+    /// Every exercise whose topic directory is `dir`, in order.
+    pub fn in_topic(&self, dir: &str) -> Vec<usize> {
+        self.exercises
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| e.dir.as_deref() == Some(dir))
+            .map(|(i, _)| i)
+            .collect()
+    }
+
+    /// Resolves a name that is either an exercise (`pointers2`,
+    /// `06_pointers/pointers2`) or a topic directory (`06_pointers`) to the
+    /// list of matching exercise indices.
+    pub fn resolve_many(&self, name: &str) -> Result<Vec<usize>> {
+        if let Some(idx) = self.find(name) {
+            return Ok(vec![idx]);
+        }
+        let topic = self.in_topic(name.trim_end_matches('/'));
+        if !topic.is_empty() {
+            return Ok(topic);
+        }
+        self.resolve(Some(name)).map(|idx| vec![idx])
+    }
+
+    /// Resets one exercise so it can be redone: forgets that it is done and,
+    /// unless `keep_file` is set, restores the pristine exercise file.
+    pub fn reset(&mut self, idx: usize, keep_file: bool) -> Result<()> {
+        if !keep_file {
+            self.restore_file(idx)?;
+        }
         self.set_done(idx, false)
     }
 
-    /// Restores every exercise file, forgets all progress and makes the first
-    /// exercise current again.
-    pub fn reset_all(&mut self) -> Result<()> {
+    /// Resets every exercise, forgets all progress and makes the first
+    /// exercise current again. With `keep_file` the files are left alone.
+    pub fn reset_all(&mut self, keep_file: bool) -> Result<()> {
         for idx in 0..self.exercises.len() {
-            self.restore_file(idx)?;
+            if !keep_file {
+                self.restore_file(idx)?;
+            }
             self.exercises[idx].done = false;
         }
         self.n_done = 0;
@@ -199,7 +227,15 @@ impl AppState {
             fs::create_dir_all(parent)?;
         }
         fs::write(&ex.path, content)
-            .with_context(|| format!("Failed to write {}", ex.path.display()))
+            .with_context(|| format!("Failed to write {}", ex.path.display()))?;
+        for extra in &ex.extra_sources {
+            let rel = extra.to_string_lossy().replace('\\', "/");
+            if let Some(content) = embedded::get(&rel) {
+                fs::write(extra, content)
+                    .with_context(|| format!("Failed to write {}", extra.display()))?;
+            }
+        }
+        Ok(())
     }
 
     pub fn write_state(&self) -> Result<()> {
